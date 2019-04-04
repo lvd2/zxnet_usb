@@ -1,0 +1,4 @@
+#!/bin/bash
+
+vlog +define+$1 -sv -novopt -incr -f testbench top.vo
+

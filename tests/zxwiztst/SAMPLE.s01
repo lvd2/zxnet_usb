@@ -1,0 +1,315 @@
+;SAMPLE.H Пример программы, использующей оболочку.
+;(C) Vitamin/CAIG/2001
+;Опции проекта. Нужное раскомментировать, программа изменится
+
+	MODULE 	gui_sample
+	PUBLIC 	main11,LSTMHZ,putchar,puts,myint,getkey
+	EXTERN 	FONT6X8,broadcast,strip,recv_p,memtest,usb_test
+	EXTERN 	RX_BUF,mhz,update_main_menu,editbuf,sscanf
+	EXTERN	miniterm
+	RSEG	FREESEG
+	RSEG	CODE
+	#define NOLOADFIL
+	#define NOSAVEFIL
+	#define NOMEMDRV
+	#define NOFILER
+	
+	#define WIZ_BASE_ADDR 0X0000
+
+;Цвета
+	#define ACTCOLOR 40
+	#define ACTPCOLR 6
+	#define WINCOLOR 5
+	#define HDRCOLOR 48
+
+;Память
+	#define CPAGE1 66
+
+	#define DISKBUF 0xC000
+	#define LIST DISKBUF+0x900
+	#define LISTLEN 0x600
+	#define NUMLIST LIST+LISTLEN
+	
+;Файл макросов. ПОСЛЕ всех настроек
+        #include "MACROS.s01"
+
+        ;ORG 24576
+main11:
+;Главное окно
+		push bc
+		push de
+		push ix
+		push iy
+		call logwinini
+PROGR_UPD
+		call update_main_menu
+        LD A,WIN_HEADER|WIN_REFRESH|WIN_MOVABLE
+PROGR
+        LD IX,MAINWIN
+        LD (IX+4),A
+        CALL WAITKEY
+        CALL WINDOW
+        CP -1
+        jr Z,main11_quit
+        LD HL,MAINJP
+        JP TAB_JP
+main11_quit:
+		pop iy
+		pop ix
+		pop de
+		pop bc
+		ret
+
+MAINWIN DEFB 7,5,21,13
+        DEFB 15
+        DEFB 0
+        DEFW RX_BUF
+        DEFW MAINLGT
+        DEFW MAINHOT
+        DEFW -1
+
+
+MAINLGT
+        DEFB 0,2,21,1, 7          ;WIN
+        DEFB 0,3,21,1, 7          ;SPR-BUTTON
+        DEFB 0,4,21,1, 7          ;FLAG
+        DEFB 0,5,21,1, 7          ;SWITCH
+        DEFB 0,6,21,1, 7          ;SCROLLBAR
+        DEFB 0,7,21,1, 7          ;SLIDER
+        DEFB 0,8,21,1, 7          ;LIST
+        DEFB 0,9,21,1, 7          ;FILER
+        DEFB 0,10,21,1, 7         ;COMBO
+        DEFB 0,11,21,1, 7         ;ASKER
+        DEFB -1
+
+MAINHOT DEFB '0'
+        DEFW 0
+        DEFB '1'
+        DEFW 1
+        DEFB '2'
+        DEFW 2
+        DEFB '3'
+        DEFW 3
+        DEFB '4'
+        DEFW 4            ;"номер зоны"
+        DEFB '5'          ;и
+        DEFW 5        ;прямой адрес перехода
+        DEFB '6'          ;два способа
+        DEFW 6
+        DEFB '7'
+        DEFW 7
+        DEFB '8'
+        DEFW 8
+        DEFB '9'
+        DEFW 9
+        DEFB -1
+
+MAINJP  DEFW CHMHZ
+        DEFW EDITGAR
+        DEFW EDITSUBR
+        DEFW EDITSIPR
+        DEFW BROAD
+        DEFW RECVPACK
+        DEFW WIZMEMTST
+        DEFW SL811TEST
+        DEFW MINTERM
+        DEFW WIZMEMTST
+
+
+;Кнопка-спрайт------------------------
+EDITGAR   
+		ld hl,WIZ_BASE_ADDR+0x0010
+		jp get_ip	
+EDITSUBR   
+		ld hl,WIZ_BASE_ADDR+0x0014
+		jp get_ip	
+EDITSIPR   
+		ld hl,WIZ_BASE_ADDR+0x0018
+		jp get_ip	
+get_ip
+		push hl
+        LD IX,JUSTWIN
+        CALL MAKEWIND
+		CALL WAITKEY
+        LD DE,0x0101             ;оконные координаты
+		ld hl,editbuf
+		ld b,15
+		call EDIT
+		CALL CLOSE
+		ld hl,tmp_ip+3
+		push hl
+		dec hl
+		push hl
+		dec hl
+		push hl
+		dec hl
+		push hl
+		ld hl,strip
+		push hl
+		ld hl,editbuf
+		push hl
+		call sscanf
+		pop af
+		pop af
+		pop af
+		pop af
+		pop af
+		pop af
+		ld bc,0x82ab
+		in a,(c)
+		xor 0x08
+		out (c),a
+		ld hl,tmp_ip
+		pop de
+		ld bc,4
+		ldir
+		ld bc,0x82ab
+		in a,(c)
+		or 0x08
+		out (c),a
+		call CLOSE
+		JP PROGR_UPD
+JUSTWIN DEFB 15,14,13,3,14
+        DEFB -1
+		
+tmp_ip 	DEFB 0,0,0,0,0
+;----------------------------------------------------
+BROAD
+		CALL CLOSE
+		call logwinini
+		call broadcast
+		call NOKEY
+		;CALL CLOSE
+		JP PROGR_UPD
+;----------------------------------------------------
+RECVPACK
+		CALL CLOSE
+		call logwinini
+		call recv_p
+		call NOKEY
+		;CALL CLOSE
+		JP PROGR_UPD
+		
+;----------------------------------------------------
+MINTERM
+		CALL CLOSE
+		call logwinini
+		call miniterm
+		call NOKEY
+		;CALL CLOSE
+		JP PROGR_UPD
+		
+;выбор клока--------------------
+CHMHZ
+        LD HL,LSTMHZ
+        LD DE,0x0b02             ;оконные координаты
+        CALL CAL_ABS            ;в экранные
+        EX DE,HL
+        LD BC,0x0405             ;размер
+        EXX 
+        LD DE,0x0304             ;параметры
+        EXX 
+        LD A,H
+        LD H,L
+        LD L,A
+        XOR A
+        CALL COMBOBOX
+        CP -1
+        JR Z,CHMHZ_EXIT
+		ld (mhz),a
+		call update_main_menu
+CHMHZ_EXIT:
+        LD A,WIN_HEADER|WIN_NOBACK|WIN_MOVABLE
+		JP PROGR
+
+LSTMHZ 	DEFB '3.5',0
+        DEFB '  7',0
+        DEFB ' 14',0
+;-------------------------------------------
+SL811TEST:
+        CALL CLOSE	
+		call logwinini
+		call WAITKEY
+		call usb_test
+		JP PROGR_UPD
+	
+;-------------------------------------------
+WIZMEMTST:
+		LD IX,PERMWIN
+        CALL WINDOW
+        push af
+        CALL CLOSE	
+        CALL CLOSE	
+		call logwinini
+		call WAITKEY
+		pop af
+		ld e,a
+		call memtest
+		JP PROGR_UPD
+
+PERMWIN  
+		DEFB 12,10,12,4,7
+        DEFB 0
+        DEFW PERMTEXT
+        DEFW PERMACT
+        DEFW -1
+PERMTEXT  
+		DEFB '  Доступ по',13,13
+        DEFB ' меммап порты',0
+
+PERMACT   
+		DEFB 1,2,5,1,7
+        DEFB 6,2,5,1,7
+        DEFB -1
+		
+SPEED   DEFB 5
+SHOWDEL DEFB 255
+;--------------------------------------
+logwinini:
+		ld hl,0x0100
+		ld (YTXT),hl
+		ld (YWIN),hl
+		ld bc,0x2018
+		ld (YSIZ),bc
+		call CLS_WIN
+		ret
+puts:
+		push ix
+		push iy
+		push de
+		push bc
+		ld h,d
+		ld l,e
+		ld c,0
+		call PRINTOLD
+		ld e,'\r'
+		call putchar
+		pop bc
+		pop de
+		pop iy
+		pop ix
+		ret
+putchar:
+		push ix
+		push iy
+		push de
+		push bc
+		ld hl,putcharchar
+		ld (hl),e
+		ld c,0
+		call PRINTOLD
+		pop bc
+		pop de
+		pop iy
+		pop ix
+		ret
+putcharchar:
+		DEFB 0,0
+
+		
+		
+        #include "COVER.s01"
+
+
+	END
+	

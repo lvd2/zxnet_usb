@@ -1,0 +1,13 @@
+-cZ80 //процессор, под который собираем
+-Z(CODE)RCODE,CODE,CDATA0,CONST,CSTR,CCSTR,TABL8|8=6000-BEBD //сегменты памяти с константами и кодом
+-Z(DATA)INTJP=BEBE-BEC0 //сегмент с JP для прерываний im2
+-Z(DATA)DATA0,IDATA0,UDATA0,ECSTR,ALIGN8|8,INTTABLE|8,CSTACK+200,FREESEG=BEC1-FFFF //сегменты стека, переменных и т.п.
+-e_medium_write=_formatted_write //конфигурация printf/sprintf  
+-e_medium_read=_formatted_read //конфигурация scanf/sscanf 
+cstartup //линкуем наш стартап
+mylib/mylib //линкуем собственную библиотеку
+-C ../utils/iar/clz80 //подключаем библиотеку, опция '-C' позволит нам прилинковать свой cstartup
+-Fraw-binary //собрать чистый бинарь
+-l list/cout.html
+-o code.raw //имя бинарника
+-xehinms //включим всё для полноты картины

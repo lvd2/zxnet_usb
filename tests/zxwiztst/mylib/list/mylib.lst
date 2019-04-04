@@ -1,0 +1,203 @@
+##############################################################################
+#                                                                            #
+# IAR Z80/64180 C-Compiler V4.06A/W32                                        #
+#                                                                            #
+#       Compile time  =  09/Feb/2016  10:47:27                               #
+#       Target option =  Z80                                                 #
+#       Memory model  =  large                                               #
+#       Source file   =  mylib.c                                             #
+#       List file     =  list\mylib.lst                                      #
+#       Object file   =  mylib.r01                                           #
+#       ASM file      =  list\mylib.s01                                      #
+#       Command line  =  -v0 -ml -uua -b -q -x -K -gA -z9 -t4 -T -Llist\     #
+#                        -Alist\ -I../z80/inc/ mylib.c                       #
+#                                                                            #
+#                           Copyright 2001 IAR Systems. All rights reserved. #
+##############################################################################
+
+   \   0000                    MODULE  mylib(16)
+   \   0000                    RSEG    CODE(0)
+   \   0000                    RSEG    UDATA0(0)
+   \   0000                    RSEG    IDATA0(0)
+   \   0000                    RSEG    CDATA0(0)
+   \   0000                    PUBLIC  mylib_font8x8
+   \   0000                    PUBLIC  putchar
+   \   0000                    PUBLIC  scr_init
+   \   0000                    EXTERN  ?CLZ80L_4_06_L00
+   \   0000                    EXTERN  ?ENT_PARM_DIRECT_L09
+   \   0000                    EXTERN  ?ENT_AUTO_DIRECT_L09
+   \   0000                    EXTERN  ?LEAVE_DIRECT_L09
+   \   0000                    RSEG    CODE
+      1          #include <string.h>
+      2          #include <intrz80.h>
+      3          #include <stdio.h>
+      4          char * mylib_font8x8=(void*)0x3c00;
+      5          static union {char * w;char b[2];}scrxy;
+   \   0000            scr_init:
+   \   0000  CD0000            CALL    ?ENT_PARM_DIRECT_L09
+      6          void scr_init(char a){
+   \   0003  7B                LD      A,E
+   \   0004  320058            LD      (22528),A
+      7              *((char *)0x5800)=a;
+   \   0007  CB3B              SRL     E
+   \   0009  CB3B              SRL     E
+   \   000B  CB3B              SRL     E
+   \   000D  7B                LD      A,E
+   \   000E  D3FE              OUT     (254),A
+      8              output8(0xfe,a>>3);
+   \   0010  01FF02            LD      BC,767
+   \   0013  110158            LD      DE,22529
+   \   0016  210058            LD      HL,22528
+   \   0019  EDB0              LDIR
+      9              memcpy((void *)0x5801, (void *)0x5800, 32*24-1);
+   \   001B  210040            LD      HL,16384
+   \   001E  220000            LD      (scrxy),HL
+     10              scrxy.w=(void *)0x4000;
+   \   0021  AF                XOR     A
+   \   0022  320040            LD      (16384),A
+     11              *((char *)0x4000)=0;
+   \   0025  01FF17            LD      BC,6143
+   \   0028  110140            LD      DE,16385
+   \   002B  EDB0              LDIR
+     12              memcpy((void *)0x4001, (void *)0x4000, (unsigned int)256*192/8-1);
+   \   002D  C30000            JP      ?LEAVE_DIRECT_L09
+     13          }
+   \   0030            putchar:
+   \   0030  CD0000            CALL    ?ENT_AUTO_DIRECT_L09
+   \   0033  FCFF              DEFW    65532
+     14          int putchar(int ch){
+   \   0035  DD4E02            LD      C,(IX+2)
+   \   0038  DD4603            LD      B,(IX+3)
+   \   003B  3E0D              LD      A,13
+   \   003D  A9                XOR     C
+   \   003E  B0                OR      B
+   \   003F  280E              JR      Z,?0012
+   \   0041  3E0A              LD      A,10
+   \   0043  A9                XOR     C
+   \   0044  B0                OR      B
+   \   0045  2012              JR      NZ,?0013
+   \   0047            ?0011:
+     15              switch(ch){
+   \   0047  3A0000            LD      A,(scrxy)
+   \   004A  C620              ADD     A,32
+   \   004C  320000            LD      (scrxy),A
+   \   004F            ?0012:
+     16                  case '\n':  scrxy.b[0]+=32;
+   \   004F  3A0000            LD      A,(scrxy)
+   \   0052  E6E0              AND     224
+   \   0054  320000            LD      (scrxy),A
+     17                  case '\r':  scrxy.b[0]&=0xe0;
+   \   0057  1833              JR      ?0010
+   \   0059            ?0013:
+     18                      break;
+     19                  default:{
+   \   0059  69                LD      L,C
+   \   005A  60                LD      H,B
+   \   005B  29                ADD     HL,HL
+   \   005C  29                ADD     HL,HL
+   \   005D  29                ADD     HL,HL
+   \   005E  ED4B0000          LD      BC,(mylib_font8x8)
+   \   0062  09                ADD     HL,BC
+   \   0063  EB                EX      DE,HL
+     20                          char* s=mylib_font8x8+(ch<<3);
+   \   0064  DD36FE08          LD      (IX-2),8
+   \   0068            ?0015:
+     21                          unsigned char i=8;
+   \   0068  DD46FE            LD      B,(IX-2)
+   \   006B  DD35FE            DEC     (IX-2)
+   \   006E  04                INC     B
+   \   006F  05                DEC     B
+   \   0070  280E              JR      Z,?0014
+   \   0072            ?0016:
+     22                          while(i--){
+   \   0072  6B                LD      L,E
+   \   0073  62                LD      H,D
+   \   0074  13                INC     DE
+   \   0075  46                LD      B,(HL)
+   \   0076  2A0000            LD      HL,(scrxy)
+   \   0079  70                LD      (HL),B
+     23                              *scrxy.w=*(s++);
+   \   007A  210100            LD      HL,scrxy+1
+   \   007D  34                INC     (HL)
+     24                              scrxy.b[1]++;
+     25                          }
+   \   007E  18E8              JR      ?0015
+   \   0080            ?0014:
+     26                      }
+   \   0080  210000            LD      HL,scrxy
+   \   0083  7E                LD      A,(HL)
+   \   0084  D6FF              SUB     255
+   \   0086  77                LD      (HL),A
+   \   0087  23                INC     HL
+   \   0088  7E                LD      A,(HL)
+   \   0089  DE07              SBC     A,7
+   \   008B  77                LD      (HL),A
+     27                      scrxy.w-=0x07ff;
+   \   008C            ?0010:
+     28                      break;
+     29              }
+   \   008C  3A0000            LD      A,(scrxy)
+   \   008F  B7                OR      A
+   \   0090  2011              JR      NZ,?0020
+   \   0092            ?0017:
+     30              if(!scrxy.b[0]){
+   \   0092  3A0100            LD      A,(scrxy+1)
+   \   0095  C608              ADD     A,8
+   \   0097  320100            LD      (scrxy+1),A
+   \   009A  FE58              CP      88
+   \   009C  2005              JR      NZ,?0020
+   \   009E            ?0019:
+   \   009E  3E40              LD      A,64
+   \   00A0  320100            LD      (scrxy+1),A
+   \   00A3            ?0020:
+   \   00A3            ?0018:
+     31                  if((scrxy.b[1]+=8)==0x58) scrxy.b[1]=0x40;
+     32              }
+   \   00A3  210100            LD      HL,1
+     33              return 1;
+   \   00A6  C30000            JP      ?LEAVE_DIRECT_L09
+     34          }
+   \   0000                    RSEG    UDATA0
+   \   0000            scrxy:
+   \   0002                    DEFS    2
+   \   0000                    RSEG    IDATA0
+   \   0000            mylib_font8x8:
+   \   0002                    DEFS    2
+   \   0000                    RSEG    CDATA0
+   \   0000  003C              DEFW    15360
+   \   0002                    END
+
+
+                                       S Y M B O L - T A B L E
+                                       =======================
+
+
+            #include file(s):
+
+       [ 1]       list\mylib.lst
+
+
+            Symbol                     Type     Class   Defline   Refline(s)
+            ------                     ----     -----   -------   ----------
+
+memcpy                             function intrinsic     29:1          9       12
+mylib_font8x8                       pointer    public        4         20
+output8                            function intrinsic     36:3          8
+putchar                            function    public       14       28:4
+scr_init                           function    public        6          6
+scrxy                                 union    static        5         10       16       17       23
+                                                                       24       27       30       31
+                                                                       31
+size_t                              u_short   typedef     89:2       29:1     31:1     33:1     35:1
+                                                                     37:1     43:1     47:1     49:1
+                                                                     51:1     61:1     65:1     71:1
+                                                                     71:1
+va_list                               array   typedef    141:5       31:4     33:4
+
+
+Errors: none
+Warnings: none
+Code size: 169
+Constant size: 2
+Static variable size: Data(4) Iram(0)
+

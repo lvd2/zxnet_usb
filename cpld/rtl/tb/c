@@ -1,0 +1,5 @@
+#!/bin/bash
+
+vlog -sv -novopt -incr +define+CLOCKED_FILTER=1 -f files -f testbench
+#vlog -sv -novopt -incr -f files -f testbench
+

@@ -1,0 +1,108 @@
+	MODULE	fast_set_pix
+	PUBLIC	fast_set_pix,fast_set_pix_table
+	RSEG	CODE
+fast_set_pix	;http://zxdn.narod.ru/coding/zg1etud2.txt
+	push bc
+	push de
+	ld l,c
+    LD H,HIGH(fast_set_pix_table)
+    LD D,HIGH(fast_set_pix_table)+2
+    LD A,(DE)
+    INC D 
+    OR (HL)
+    INC H
+    LD H,(HL)
+    LD L,A
+    LD A,(DE)
+    OR (HL)
+    LD (HL),A
+	pop de
+	pop bc
+	ret
+	RSEG	ALIGN8
+fast_set_pix_table
+	DEFS 1024 
+	ENDMOD
+	
+	MODULE	fast_set_pix_init
+	PUBLIC	fast_set_pix_init
+	EXTERN	fast_set_pix_table
+	RSEG	CODE
+fast_set_pix_init
+	push bc
+	push de
+    LD HL,fast_set_pix_table+256
+    LD DE,0x4000
+GEN0 
+	LD (HL),D  
+    DEC H      
+    LD (HL),E  
+    INC H  
+    INC D
+    LD A,D
+    AND 7
+    JR NZ,LABEL
+    LD A,E
+    SUB 0xE0
+    LD E,A
+    SBC A,A
+    AND -8
+    ADD A,D
+    LD D,A
+LABEL
+    LD A,D     
+    SUB 88     
+    JR NZ,$+3  
+    LD D,A     
+    INC L      
+    JR NZ,GEN0 
+    INC H
+    LD A,128
+GEN1
+	LD (HL),E  
+    INC H      
+    LD (HL),A  
+    DEC H      
+    RRCA       
+    JR NC,$+3  
+    INC E      
+    INC L      
+    JR NZ,GEN1 
+	pop de
+	pop bc
+	ret
+	ENDMOD
+	
+	MODULE	little_set_pix
+	PUBLIC	little_set_pix
+	RSEG	CODE
+little_set_pix
+	ld a,c
+	and 0x07		
+	or %01000000	
+	ld h,a
+	ld a,c
+	rrca
+	rrca
+	rrca	;fghabcde
+	ld l,a
+	and %00011000	
+	or h			
+	ld h,a
+	ld a,l
+	ld l,e	
+	rrca
+	rr l
+	rra
+	rr l
+	rra		
+	rr l
+	rra	
+	rrca	
+	rrca		
+	and %00111000	
+	xor %11111110
+	ld (l2+1),a
+l2	set 0,(hl)
+	ret
+	END

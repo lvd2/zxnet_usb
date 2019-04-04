@@ -1,0 +1,25 @@
+	MODULE	my_im2
+	PUBLIC	my_im2_init
+	RSEG	INTJP
+	DEFS 3
+	RSEG	INTTABLE
+	DEFS 257
+	RSEG	CODE
+my_im2_init
+	di
+	ld a,0xc3
+	ld (SFB(INTJP)),a
+	ld (SFB(INTJP)+1),de
+	ld a,HIGH(SFB(INTTABLE))
+	ld i,a
+	inc a
+	ld hl,SFB(INTTABLE)-1
+tloop
+	inc hl
+	ld (hl),HIGH(SFB(INTJP))
+	cp h
+	jr nz,tloop
+	im 2
+	ret
+	END
+	

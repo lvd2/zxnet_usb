@@ -1,0 +1,151 @@
+	MODULE	mylib(16)
+	RSEG	CODE(0)
+	RSEG	UDATA0(0)
+	RSEG	IDATA0(0)
+	RSEG	CDATA0(0)
+	PUBLIC	mylib_font8x8
+	PUBLIC	putchar
+	PUBLIC	scr_init
+	EXTERN	?CLZ80L_4_06_L00
+	EXTERN	?ENT_PARM_DIRECT_L09
+	EXTERN	?ENT_AUTO_DIRECT_L09
+	EXTERN	?LEAVE_DIRECT_L09
+	RSEG	CODE
+; 1.	#include <string.h>
+; 2.	#include <intrz80.h>
+; 3.	#include <stdio.h>
+; 4.	char * mylib_font8x8=(void*)0x3c00;
+; 5.	static union {char * w;char b[2];}scrxy;
+scr_init:
+	CALL	?ENT_PARM_DIRECT_L09
+; 6.	void scr_init(char a){
+	LD	A,E
+	LD	(22528),A
+; 7.	    *((char *)0x5800)=a;
+	SRL	E
+	SRL	E
+	SRL	E
+	LD	A,E
+	OUT	(254),A
+; 8.	    output8(0xfe,a>>3);
+	LD	BC,767
+	LD	DE,22529
+	LD	HL,22528
+	LDIR
+; 9.	    memcpy((void *)0x5801, (void *)0x5800, 32*24-1);
+	LD	HL,16384
+	LD	(scrxy),HL
+; 10.	    scrxy.w=(void *)0x4000;
+	XOR	A
+	LD	(16384),A
+; 11.	    *((char *)0x4000)=0;
+	LD	BC,6143
+	LD	DE,16385
+	LDIR
+; 12.	    memcpy((void *)0x4001, (void *)0x4000, (unsigned int)256*192/8-1);
+	JP	?LEAVE_DIRECT_L09
+; 13.	}
+putchar:
+	CALL	?ENT_AUTO_DIRECT_L09
+	DEFW	65532
+; 14.	int putchar(int ch){
+	LD	C,(IX+2)
+	LD	B,(IX+3)
+	LD	A,13
+	XOR	C
+	OR	B
+	JR	Z,?0012
+	LD	A,10
+	XOR	C
+	OR	B
+	JR	NZ,?0013
+?0011:
+; 15.	    switch(ch){
+	LD	A,(scrxy)
+	ADD	A,32
+	LD	(scrxy),A
+?0012:
+; 16.	        case '\n':  scrxy.b[0]+=32;
+	LD	A,(scrxy)
+	AND	224
+	LD	(scrxy),A
+; 17.	        case '\r':  scrxy.b[0]&=0xe0;
+	JR	?0010
+?0013:
+; 18.	            break;
+; 19.	        default:{
+	LD	L,C
+	LD	H,B
+	ADD	HL,HL
+	ADD	HL,HL
+	ADD	HL,HL
+	LD	BC,(mylib_font8x8)
+	ADD	HL,BC
+	EX	DE,HL
+; 20.	                char* s=mylib_font8x8+(ch<<3);
+	LD	(IX-2),8
+?0015:
+; 21.	                unsigned char i=8;
+	LD	B,(IX-2)
+	DEC	(IX-2)
+	INC	B
+	DEC	B
+	JR	Z,?0014
+?0016:
+; 22.	                while(i--){
+	LD	L,E
+	LD	H,D
+	INC	DE
+	LD	B,(HL)
+	LD	HL,(scrxy)
+	LD	(HL),B
+; 23.	                    *scrxy.w=*(s++);
+	LD	HL,scrxy+1
+	INC	(HL)
+; 24.	                    scrxy.b[1]++;
+; 25.	                }
+	JR	?0015
+?0014:
+; 26.	            }
+	LD	HL,scrxy
+	LD	A,(HL)
+	SUB	255
+	LD	(HL),A
+	INC	HL
+	LD	A,(HL)
+	SBC	A,7
+	LD	(HL),A
+; 27.	            scrxy.w-=0x07ff;
+?0010:
+; 28.	            break;
+; 29.	    }
+	LD	A,(scrxy)
+	OR	A
+	JR	NZ,?0020
+?0017:
+; 30.	    if(!scrxy.b[0]){
+	LD	A,(scrxy+1)
+	ADD	A,8
+	LD	(scrxy+1),A
+	CP	88
+	JR	NZ,?0020
+?0019:
+	LD	A,64
+	LD	(scrxy+1),A
+?0020:
+?0018:
+; 31.	        if((scrxy.b[1]+=8)==0x58) scrxy.b[1]=0x40;
+; 32.	    }
+	LD	HL,1
+; 33.	    return 1;
+	JP	?LEAVE_DIRECT_L09
+; 34.	}
+	RSEG	UDATA0
+scrxy:
+	DEFS	2
+	RSEG	IDATA0
+mylib_font8x8:
+	DEFS	2
+	RSEG	CDATA0
+	DEFW	15360
+	END

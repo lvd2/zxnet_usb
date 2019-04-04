@@ -1,0 +1,2142 @@
+;***************************************************************
+;*
+;* COVER.H
+;*
+;* Главный файл оболочки.
+;* Оконные и графические процедуры.
+;*
+;* (C) Vitamin/CAIG/2001  2001-2006
+;*
+;* Обозначения в файле MACROS.H
+;*
+;* Revision 9.01.2006
+;*
+;***************************************************************
+
+#if 0
+Func: ASKER
+Desc: Задает вопрос "вы уверены (д/н)"
+Out:  Z- YES, NZ- NO
+Uses: *
+Note: NOASKER запрещает генерацию
+---
+Func: WINDOW
+Desc: Выводит окно со всеми элементами и запускает цикл
+In:   IX- window descriptor
+Out:  A- номер выбранной зоны (255 если отмена)
+Uses: *
+---
+Func: LETTERS
+Desc: Устанавливает режим ввода букв для EDIT
+Uses: A
+---
+Func: DIGITS
+Desc: Устанавливает режим ввода только цифр для EDIT
+Uses: A
+---
+Func: EDIT
+Desc: Редактор текста
+In:   HL- text, DE- (XZ,YZ), B- symbols
+Uses: *
+Note: <Edit>- переключение языка
+---
+Func: PRINT
+Desc: Печать строки (шрифт 6x8 по умолчанию) с позиции (1,0)
+In:   HL- text, C- symbols (=0- сколько в строке)
+Uses: *
+Note: Коды: 13- перевод строки, 22,X,Y- позиционирование,
+      0- конец строки. Позиция относительно левого верхнего
+      угла текущего окна
+---
+Func: PRINTXY
+Desc: Печать строки с определенной позиции
+In:   DE- (XS,YZ) (*)
+Uses: *
+Note: (*) см. описание PRINT
+---
+Func: MAKEWIND
+Desc: Открытие окна и печать текста
+In:   IX- descriptor
+Uses: *
+Note: Другие элементы интерфейса не выводятся
+---
+Func: TAB_JP
+Desc: Переход к процедуре с номером в таблице
+In:   A- number, HL- table
+---
+Func: TST_HL
+Desc: Проверка HL
+In:   HL
+Out:  CARRY (HL=FFFF), ZERO (HL=0000)
+Uses: A
+---
+Func: CLOSE
+Desc: Закрытие последнего открытого окна
+Out:  A- количество оставшихся окон
+Uses: *
+---
+Func: RAMKA
+Desc: Сплошная рамка по знакоместам
+In:   HL=(XZ,YZ)-позиция BC=(XZ,YZ)- размер
+Uses: *
+---
+Func: RAMK
+Desc: Пунктирная рамка по знакоместам
+In:   HL=(XZ,YZ)- позиция BC=(XZ,YZ)- размер
+Uses: *
+---
+Func: CLS_WIN
+Desc: Очистка области на экране
+In:   HL=(XZ,YZ)- позиция BC=(XZ,YZ)- размеры
+Uses: *
+Note: Атрибуты области сбрасываются в WINCOLOR
+---
+Func: GETWIND
+Desc: Сохранение области экрана в память
+In:   HL=(XZ,YZ)- позиция, BC=(XZ,YZ)- размер DE- memaddr
+Uses: *
+Note: Атрибуты также сохраняются
+---
+Func: PUTWIND
+Desc: Вывод области экрана из памяти
+Note: Параметры аналогично GETWIND
+---
+Func: PUT_SPRT
+Desc: Вывод спрайта
+In:   HL=(XZ,YZ)- позиция BC=(XZ,YZ)- размер
+      DE- данные в памяти, C': бит0- данные, бит1- атрибуты
+      бит2- экранные координаты (иначе оконные)
+Uses: *
+---
+Func: COMBOBOX
+Desc: Выводит и обрабатывает комбобокс
+In:   HL=(YZ,XZ)- координаты на экране BC=(YZ,XZ)- размер
+      DE- строки длиной E' и числом D'. A- первый элемент
+Out:  A- выбранный элемент (255 если отмена)
+Note: NOCOMBO запрещает генерацию
+#endif 
+
+
+;BIT NUMBERS
+FLG_HEADER=0
+FLG_REFRESH=1
+FLG_MOVABLE=2
+FLG_NOMODAL=3
+FLG_NOBACK=4
+
+        #ifndef NOASKER
+ASKER
+        LD HL,(YWIN)
+        PUSH HL
+        LD IX,ASKWIN
+        CALL WINDOW
+        AND A
+        PUSH AF
+        CALL CLOSE
+        POP AF
+		POP HL
+        LD (YWIN),HL
+        RET 
+
+ASKWIN  DEFB 12,10,9,4,7
+        DEFB 0
+        DEFW ASTEXT
+        DEFW ASACT
+        DEFW -1
+
+ASTEXT  DEFB 'Вы уверены?',13,13
+        DEFB ' Да  Нет',0
+
+ASACT   DEFB 1,2,3,1,3
+        DEFB 4,2,3,1,3
+        DEFB -1
+
+        #endif           ;ASKER
+
+SP_CYC  LDCP            ;ложим спрайты
+        RET Z
+        LD D,A
+        INC HL
+        MOVHL E
+        MOVHL C
+        MOVHL B
+        MOVHL A
+        EXX 
+        LD C,A
+        EXX 
+        LD A,(HL)
+        INC HL
+        PUSH HL
+        LD H,(HL)
+		LD L,A
+        EX DE,HL
+        CALL PUT_SPRT
+        POP HL
+        INC HL
+        JR SP_CYC
+
+P_FLAGZ SET 1,(IX+5)
+FL_CYC  LDCP            ;ложим флажки
+        RET Z
+        CALL CAL_COR
+        INC HL
+        PUSH HL
+        LD A,(HL)
+        AND 7
+        XOR 4
+        CALL PR_ONE
+        POP HL
+        HLPL3
+        JR FL_CYC
+
+P_RADIO SET 2,(IX+5)
+SW_CYC  LDCP            ;ложим переключатели
+        RET Z
+        INC HL
+        LD B,(HL)       ;CNT
+        INC HL
+        LD C,(HL)       ;EQU
+        HLPL3
+        PUSH HL
+PISS    PUSH AF
+		PUSH BC
+        CALL CAL_COR
+        LD A,C
+;       DEC A
+        AND A
+        JR Z,PROT
+        LD A,1
+PROT    INC A
+        CALL PR_ONE
+        POP BC
+		POP AF
+        INC A
+        DEC C
+        DJNZ PISS
+        POP HL
+        JR SW_CYC
+
+        #ifndef NOSLB
+P_POLZ  SET 3,(IX+5)
+PLZ_CYC LDCP            ;ложим ползунки
+        RET Z
+        CALL POLZUNK
+        CALL PUT_BAR
+        JR PLZ_CYC
+        #endif 
+
+P_HAND  SET 4,(IX+5)        ;ложим рукоятки
+RU_CYC  LDCP
+        RET Z
+        CALL CAL_COR
+        INC HL
+        LD A,(HL)
+        INC HL
+        LD C,(HL)
+        HLPL3
+        PUSH HL
+        AND A
+        JR NZ,HOR_RUK
+        CALL ADDRZ
+        LD A,15
+        SUB C
+        JR Z,PT_RKV
+        RLA 
+        LD B,A
+SKPV    LD (HL),16
+        CALL D_HL
+        DJNZ SKPV
+PT_RKV  LD DE,0xFE82
+        LD (HL),D
+        CALL D_HL
+        LD (HL),E
+        CALL D_HL
+        LD (HL),E
+        CALL D_HL
+        LD (HL),D
+        CALL D_HL
+        LD A,C
+        AND A
+        JR Z,RP_CYC
+        RLA 
+        LD B,A
+OTRK    LD (HL),16
+        CALL D_HL
+        DJNZ OTRK
+RP_CYC  POP HL
+        JR RU_CYC
+
+HOR_RUK
+        CALL ADDRZ
+        PUSH HL
+		PUSH BC
+        LD C,8
+        XOR A
+CL_UPS  LD B,4
+        PUSH HL
+CL_LD   LD (HL),A
+        INC L
+        DJNZ CL_LD
+        AND 192
+        LD (HL),A
+        POP HL
+        INC H
+        LD A,H
+        AND 7
+        SUB 3
+        JR Z,AOK
+        LD A,-1
+AOK     CPL 
+        DEC C
+        JR NZ,CL_UPS
+
+        POP BC
+		POP HL
+        LD A,C
+        AND 252
+        RRA 
+        RRA 
+        ADDHLA
+
+        LD A,C
+        AND 3
+        RLA 
+        LD (NYLO+1),A
+        LD A,7
+        LD (STROK+1),A
+        LD BC,RK_SPRT
+SHLUSS  LD A,(BC)
+		LD E,A
+		LD D,0
+        PUSH BC
+NYLO    LD A,0
+        AND A
+        JR Z,SUJ
+        LD B,A
+
+SSHIFT
+        RR E
+		RR D
+        DJNZ SSHIFT
+SUJ
+        LD A,E
+        XOR (HL)
+        LD (HL),A
+        INC HL
+        LD A,D
+        AND 254
+        XOR (HL)
+        LD (HL),A
+        DEC HL
+        INC H
+STROK   LD A,7
+        POP BC
+        INC BC
+        DEC A
+        LD (STROK+1),A
+        JR NZ,SHLUSS
+        POP HL
+        JP RU_CYC
+
+P_LIST  SET 5,(IX+5)
+LS_CYC  LDCP            ;ложим списки
+        RET Z
+        PUSH HL
+        LD E,A
+		LD D,0
+		LD L,A
+		LD H,D
+        ADD HL,HL
+        INC HL
+        ADD HL,HL
+        ADD HL,DE
+        MOV E,D,WIN_ACT
+        ADD HL,DE
+        EX AF,AF' 
+        LD A,(HL)
+        DEC A
+        LD (EXS+1),A
+        EX AF,AF' 
+        POP HL
+        CALL POLZUNK
+        PUSH HL
+        LD A,(HL)
+        LD (STR_LEN+1),A
+        LD (PR_LIST+1),A
+        DEC HL
+        LD B,(HL)
+        DEC HL
+        LD C,(HL)
+        LD (LST_TXT+1),BC
+        DEC HL
+        LD A,(HL)
+        LD (DLTR+1),A
+        POP HL
+        LD A,D
+EXS     ADD A,0
+        LD D,A
+        PUSH HL
+        CALL PUT_BAR
+        CALL LISTER
+        POP HL
+        INC HL
+        JR LS_CYC
+
+WINDOW  LD (IX+5),0
+WINDOWSS
+        LD (STAK),SP
+        CALL MAKEWIND
+        RES 5,(IX+4)
+        MOV L,H,WIN_ACT
+        CALL TST_HL
+        JP C,WINCYCL
+        MOV L,H,WIN_HOT
+        CALL TST_HL
+        JR C,WINCYCL
+        JR Z,NO_HOT
+        SET 0,(IX+5)
+NO_HOT  MOV L,H,WIN_SPR
+        CALL TST_HL
+        JR C,WINCYCL
+
+        CALL NZ,SP_CYC
+
+NEY1    MOV L,H,WIN_FLG
+        CALL TST_HL
+        JR C,WINCYCL
+
+        CALL NZ,P_FLAGZ
+
+NEY2    MOV L,H,WIN_SWT
+        CALL TST_HL
+        JR C,WINCYCL
+
+        CALL NZ,P_RADIO
+
+NEY3    
+		#ifndef NOSLB
+        MOV L,H,WIN_SLB
+        CALL TST_HL
+        JR C,WINCYCL
+
+        CALL NZ,P_POLZ
+        #endif 
+
+NEY4    MOV L,H,WIN_PLZ
+        CALL TST_HL
+        JR C,WINCYCL
+
+        CALL NZ,P_HAND
+
+NEY5    MOV L,H,WIN_LST
+        CALL TST_HL
+        JR C,WINCYCL
+
+        CALL NZ,P_LIST
+
+NEY6    MOV L,H,WIN_CLL          ;вызов при создании
+        CALL TST_HL
+        JR Z,WINCYCL
+        JR C,WINCYCL
+        SET 6,(IX+5)
+        LD DE,WINCYCL
+        PUSH DE
+        JP (HL)
+
+MIMO    CALL FIR
+        JR Z,WINCYCL
+        TEST FLG_NOMODAL,WIN_OPT
+        JR Z,WINCYCL
+EXIT    LD A,-1
+        RET 
+
+WINCYCL
+        CALL POINT
+        CALL RECALC
+        CALL KEYTEST
+        BIT 5,(IX+5)
+        CALL NZ,AB_LIST
+        CALL ACTEST
+        LD DE,(YWIN)
+		LD HL,(Y_ZN)
+		LD BC,(YSIZ)
+        CALL HITTEST
+        JR C,MIMO
+        LD A,L
+        CP E
+        JR NZ,WINCYCL
+        CALL FIR
+        JR Z,WINCYCL
+        TEST FLG_MOVABLE,WIN_OPT
+        JR Z,WINCYCL
+        CALL WAITKEY
+        SET 5,(IX+4)
+        LD HL,(YWIN)
+        ADD HL,HL
+        ADD HL,HL
+        ADD HL,HL
+        LD A,L
+		LD L,H
+		LD H,A
+        LD (X_C),HL
+
+SELCYC  LD HL,(YWIN)       ;перемещение окна
+        LD BC,(YSIZ)
+        PUSH BC
+		PUSH BC
+		PUSH HL
+        CALL RAMK
+        CALL POINT
+        CALL RECALC
+        POP HL
+		POP BC
+        CALL RAMK
+        POP BC
+        LD HL,(Y_ZN)
+YTST    LD A,L
+        ADD A,C
+        SUB 25
+        JR C,XTST
+        INC A
+        SUB L
+        NEG 
+        LD L,A
+        AMUL8
+        LD (Y_C),A
+
+XTST    LD A,H
+        ADD A,B
+        SUB 33
+        JR C,COOK
+        INC A
+        SUB H
+        NEG 
+        LD H,A
+        AMUL8
+        LD (X_C),A
+COOK    LD (YWIN),HL
+        CALL FIR
+        JR Z,SELCYC
+        LD (IX+0),H
+        LD (IX+1),L
+        CALL CLOSE
+        CALL WAITKEY
+        SET 1,(IX+4)
+        JP WINDOWSS
+
+KEYTEST
+        CALL READKEY
+        CP 14
+        JR Z,QUI
+        CP 7
+        JR Z,QUI
+        LD C,A
+        BIT 0,(IX+5)
+        RET Z
+        LD L,(IX+10)
+        LD H,(IX+11)
+
+KEY_CYC LDCP
+        RET Z
+        CP C
+        JR NZ,NX_KEY
+        INC HL
+        LD E,(HL)
+        INC HL
+        LD A,(HL)
+        AND A
+        JR Z,EX_
+        LD D,A
+        EX DE,HL
+        POP DE
+        JP (HL)
+EX_     LD A,E
+        POP DE
+        RET 
+NX_KEY  HLPL3
+        JR KEY_CYC
+QUI     POP HL
+        JP EXIT
+
+ACTEST
+        MOV L,H,WIN_ACT
+        CALL TST_HL
+        RET Z
+        RES 7,(IX+5)
+        XOR A
+        EX AF,AF' 
+
+AC_CYC  LDCP
+        RET Z
+        LD D,A          ;X
+        INC HL
+        LD E,(HL)       ;Y
+        INC HL
+        LD B,(HL)       ;WIDTH
+        INC HL
+        LD A,(HL)       ;HGT
+        AND A
+        JR Z,SK_AC
+        LD C,A
+        INC HL          ;FLG
+        PUSH HL
+        CALL CAL_ABS
+        LD HL,(Y_ZN)
+        CALL HITTEST
+        POP HL
+        JR C,NETO
+        LD A,(HL)
+        RRA 
+        JR NC,NETO
+        RRA 
+        JR NC,NOLIGA
+        RRA 
+        LD A,ACTCOLOR
+        JR NC,LIGHA
+        LD A,ACTPCOLR
+LIGHA   SET 4,(HL)
+        CALL LIGHT
+NOLIGA  CALL FIR
+        JR Z,NETE
+        BIT 4,(HL)
+        LD A,WINCOLOR
+        CALL NZ,LIGHT
+        RES 4,(HL)
+        BIT 3,(HL)
+        EXX 
+        LD DE,WAITKEY
+        JR Z,DOWAI
+        LD DE,82
+DOWAI   LD (PUSADR+1),DE
+        LD (PUSAD1+1),DE
+        EXX 
+        BIT 2,(HL)
+        EX DE,HL
+        CALL NZ,PUSHER
+        LD A,(IX+5)
+        AND 254-0x60
+        CALL NZ,OTHER
+        BIT 7,(IX+5)
+        RET NZ
+PUSAD1  CALL WAITKEY
+        EX AF,AF' 
+        LD SP,(STAK)
+        RET 
+
+SK_AC   INC HL
+        INC HL
+        JR AC_CYC
+
+
+NETO
+        BIT 4,(HL)
+        LD A,WINCOLOR
+        CALL NZ,LIGHT
+        RES 4,(HL)
+NETE    INC HL
+        EX AF,AF' 
+        INC A
+        EX AF,AF' 
+        JP AC_CYC
+
+LIGHT
+        PUSH BC
+        PUSH HL
+        LD (CLR+1),A
+        LD L,E
+		LD H,D
+        CALL COOR_ATR
+ZKL     PUSH HL
+        LD A,B
+CLR     LD (HL),0
+        INC L
+        DJNZ CLR
+        LD B,A
+        POP HL
+        DEC C
+        JR Z,NZKL
+        LD A,32
+        ADDHLA
+        JR ZKL
+NZKL    POP HL
+		POP BC
+        RET 
+
+JUMPZA  SET 7,(IX+5)
+        LD A,(HL)
+        INC HL
+        LD H,(HL)
+		LD L,A
+        OR H
+        RET Z
+        JP (HL)
+
+OTHER
+        BIT 1,(IX+5)
+        JR Z,HOW_SWT
+        MOV L,H,WIN_FLG
+TS_FL   LDCP
+        JR Z,HOW_SWT
+        EX AF,AF' 
+        CP (HL)
+        JR NZ,NX_FLG
+        EX AF,AF' 
+        INC HL
+        LD A,(HL)
+        CPL 
+        LD (HL),A
+        INC HL
+        CALL JUMPZA
+SL      POP HL
+        CALL WAITKEY
+        JP NEY1
+
+NX_FLG  EX AF,AF' 
+        HLPL3
+        INC HL
+        JR TS_FL
+
+HOW_SWT
+        BIT 2,(IX+5)
+        JR Z,HOW_BAR
+        MOV L,H,WIN_SWT
+TS_SW   LDCP
+        JR Z,HOW_BAR
+        EX AF,AF' 
+        CP (HL)
+        JR C,NX_SW
+        EX AF,AF' 
+        LD A,(HL)       ;NUM
+        INC HL
+        ADD A,(HL)      ;CNT
+        EXX 
+        LD L,A
+        EX AF,AF' 
+        CP L
+        EXX 
+        JR NC,NX_SW+1
+        EXX 
+        LD L,A
+        EX AF,AF' 
+        LD A,L          ;NEXT
+        EXX 
+        DEC HL
+        SUB (HL)
+;       INC A
+        HLPL2
+        LD (HL),A
+        INC HL
+        CALL JUMPZA
+SPL     POP HL
+        CALL WAITKEY
+        JP NEY2
+
+NX_SW   HLPL3
+        HLPL2
+        EX AF,AF' 
+        JR TS_SW
+
+HOW_BAR
+        #ifndef NOSLB
+        BIT 3,(IX+5)
+        JP Z,HOW_RUK
+        MOV L,H,WIN_SLB
+TS_BR   LDCP
+        JP Z,HOW_RUK
+        EX AF,AF' 
+        CP (HL)
+        JR NZ,NX_BR
+        EX AF,AF' 
+        INC HL
+        CALL CAL_COR ;D-X E-Y
+        CALL CAL_ABS
+
+        CALL TST_SLB
+
+        INC HL
+        CALL JUMPZA
+ZYT     POP HL
+        POP HL
+        JP NEY3
+
+NX_BR   EX AF,AF' 
+        LD A,8
+        ADDHLA
+        JR TS_BR
+        #endif 
+HOW_RUK
+        BIT 4,(IX+5)
+        RET Z
+        MOV L,H,WIN_PLZ
+TS_RU   LDCP
+        RET Z
+        EX AF,AF' 
+        CP (HL)
+        JR NZ,NX_RUK
+        EX AF,AF' 
+        CALL CAL_COR
+        CALL CAL_ABS
+        INC HL
+        LD A,(HL)
+        AND A
+        INC HL
+        JR NZ,TS_HRO
+        XOR A
+        LD (MAXA+1),A
+        LD A,E
+        RLA 
+        RLA 
+        LD E,A
+        LD A,(Y_C)
+        AND 254
+        RRA 
+        SUB E
+        XOR 15
+        CP 31
+        JR C,TS_DG
+        AND 15
+        JR TS_DG
+TS_HRO  LD A,D
+        AND A
+        RLA 
+        RLA 
+        LD D,A
+        LD A,15
+        LD (MAXA+1),A
+        LD A,(X_C)
+        AND 254
+        RRA 
+        SUB D
+        CP 31
+        JR C,TS_DG
+        AND 15
+TS_DG   CP 16
+        JR C,COR_ZN
+MAXA    LD A,0
+COR_ZN  LD (HL),A
+        INC HL
+        CALL JUMPZA
+        POP HL
+        POP HL
+        JP NEY4
+
+NX_RUK  EX AF,AF' 
+        HLPL3
+        INC HL
+        INC HL
+        JR TS_RU
+
+AB_LIST
+        MOV E,D,WIN_LST
+TS_LS   MOV L,H,WIN_ACT
+
+        LD A,(DE)
+        EX AF,AF' 
+        EX DE,HL
+        LDCP
+        RET Z
+
+        PUSH HL
+        INC HL
+        LD A,(HL)
+        LD (RESH+1),A
+        PUSH DE
+        EX AF,AF' 
+        LD L,A 
+        LD E,A 
+        LD H,0 
+        LD D,H
+        ADD HL,HL
+        ADD HL,HL
+        ADD HL,DE
+        POP DE
+
+        ADD HL,DE
+        LD D,(HL)
+        INC HL
+        LD E,(HL)
+        INC HL
+        LD (COZIN+1),HL
+        LD A,(HL)          ;SHIRINA
+        LD (EXC+1),A
+        LD (SHIR+1),A
+        LD B,A
+        INC HL
+        LD C,(HL)
+        LD A,C
+        AND A
+        JP Z,NX_ZNO
+
+        LD HL,(YWIN)
+        ADD HL,DE
+        LD A,L
+        LD (YSHKA+1),A
+
+        PUSH HL
+		PUSH BC
+        CALL COOR_ATR
+        LD DE,32
+        LD A,(COLOR+1)
+SP_A    PUSH BC
+        LD C,L
+SP_R    LD (HL),A
+        INC L
+        DJNZ SP_R
+        LD L,C
+        POP BC
+
+        ADD HL,DE
+        DEC C
+        JR NZ,SP_A
+        POP BC
+		POP HL
+
+        EX DE,HL
+        LD HL,(Y_ZN)
+        CALL HITTEST
+        JR C,NX_ZNO
+        EXX 
+        POP HL
+        INC HL
+        LD B,(HL)
+        INC HL
+        LD C,(HL)  ;COUNT
+        HLPL3
+        LD D,(HL)  ;DELTA
+        HLPL3
+        LD A,(HL)
+        INC HL
+        EXX 
+EXC     LD A,0          ;WIDTH
+        DEC A
+        ADD A,D
+        CP H
+        JP Z,BARR
+        LD A,L
+        SUB E
+        EXX 
+        CP C
+        JR NC,TS_LS1       ;NX_ZNO
+        PUSH HL
+COZIN   LD HL,0
+        INC HL
+		INC HL
+        BIT 4,(HL)
+        JR Z,KEX
+        RES 4,(HL)
+
+        DEC HL
+RESH    LD (HL),0
+KEX     POP HL
+        ADD A,D
+        LD E,A
+        PUSH HL
+        EXX 
+        LD A,D
+        EXX 
+        LD H,A
+        EXX 
+        LD A,E
+        EXX 
+        ADD A,E
+        SUB D
+        LD L,A
+        CALL COOR_ATR
+SHIR    LD B,0
+        DEC B
+        LD A,(SELCOLR+1)
+ZPPL    LD (HL),A
+        INC L
+        DJNZ ZPPL
+        POP HL
+        CALL FIR
+        JR NZ,SELESTA
+        POP HL
+        JP WINCYCL
+
+SELESTA LD HL,(LST_TXT+1)
+        LD A,(STR_LEN+1)
+        LD D,A 
+        LD A,E
+        AND A
+        JR Z,QQQ
+        LD B,A 
+        LD E,D 
+        LD D,0
+SILI    ADD HL,DE
+        DJNZ SILI
+QQQ     LD C,A
+        LD A,254
+        LD SP,(STAK)
+        RET 
+
+NX_ZNO  POP HL
+        LD DE,9
+        ADD HL,DE
+TS_LS2  EX DE,HL
+        JP TS_LS
+
+TS_LS1  PUSH HL
+        LD HL,(COZIN+1)
+        INC HL
+        LD (HL),C
+        INC HL
+        SET 4,(HL)
+        POP HL
+        JR TS_LS2
+
+BARR    EXX 
+        CALL FIR
+        RET Z
+        LD A,D
+        LD DE,-8
+        ADD HL,DE
+        LD D,A
+
+YSHKA   LD E,0
+        CALL TST_SLB
+        POP HL
+        MOV L,H,WIN_LST
+        CALL LS_CYC
+        JP WINCYCL
+
+TST_SLB
+        LD C,(HL)  ;HIGH
+        INC HL
+        LD A,(HL)
+        SUB C
+
+        EXX 
+        LD E,A          ;NON-VISIBLE
+        EXX 
+
+        INC HL
+        LD A,(HL)       ;SC_HGT
+
+        EXX 
+        LD C,A          ;SC_HGT
+        SRL A
+        LD H,A          ;SC_HGT/2
+        EXX 
+
+        INC HL
+        LD A,(HL)       ;STEP
+
+        EXX 
+        LD L,A
+        EXX 
+
+        INC HL
+        LD A,(HL)       ;DELTA
+
+        EXX 
+        LD D,A
+        EXX 
+
+        PUSH HL
+        LD A,(Y_ZN)
+        CP E            ;YMIN
+        JR Z,LN_UP1
+        SUB C           ;HGT
+        INC A
+        CP E
+        JR Z,LN_DEFW1
+
+CLCBAR  LD A,E          ;Y
+        INC A
+        AMUL8
+        LD B,A          ;SCRTOP IN PIX
+
+        LD A,E
+        DEC A
+        ADD A,C
+        AMUL8
+        LD C,A
+
+        LD A,(Y_C)
+
+        EXX 
+        SUB H           ;HBAR/2
+        EXX 
+        JR C,NEDOP
+        SUB B
+        JR NC,NE_BEG1
+NEDOP   LD H,0
+        JR DCR1
+NE_BEG1
+        LD H,A     ;DELTA IN PIX
+
+        LD A,(Y_C)
+        EXX 
+        ADD A,H         ;HBAR/2
+        EXX 
+        JR C,PEREB
+        SUB C
+        JR C,DCR1
+PEREB   LD A,C
+        EXX 
+        SUB C
+        EXX 
+        SUB B
+NE_END1
+        LD H,A  ;DELTA POS
+DCR1    EXX 
+        LD A,L  ;STEP
+        EXX 
+        LD E,A
+        CALL MULS
+        LD A,L
+RZL1    POP HL
+        LD (HL),A
+        RET 
+LN_UP1
+        LD A,(HL)
+        AND A
+        JR Z,RZL1
+        DEC A
+        JR RZL1
+
+LN_DEFW1
+        LD A,(HL)
+        EXX 
+        CP E
+        EXX 
+        JR NC,RZL1
+        INC A
+        JR RZL1
+
+POLZUNK CALL CAL_COR ;D-X E-Y координаты
+        LD (X_LST+1),DE
+        INC HL
+        LD A,(HL)  ;высота
+        LD (HYW+1),A
+        LD (STRS1+1),A
+        LD C,A
+        INC HL
+        LD B,(HL)  ;количество эл-тов
+        INC HL
+        DEC A
+        DEC A
+        AMUL8
+        EXX 
+        LD E,A          ;TOTAL HGT
+        EXX 
+        LD A,B
+        SUB C
+        JR C,NO_FULL
+        EXX 
+        LD D,A
+        LD B,1
+KON     LD C,D          ;A,D
+        CALL DIVI
+        LD A,E
+        SUB C
+        JR C,KUN
+        CP 12
+        JR NC,REDY
+KUN     INC B
+        JR KON
+
+REDY    EXX 
+        LD (HL),A  ;высота бара
+        INC HL
+        EXX 
+        LD D,A
+        LD A,B
+        EXX 
+        LD (HL),A  ;шаг
+        LD B,A
+        INC HL
+        LD C,(HL)       ;A      DELTA
+        CALL DIVI
+        LD A,C
+        EXX 
+        LD C,A
+        EXX 
+        HLPL3
+        RET 
+
+NO_FULL LD A,B
+        LD (STRS1+1),A
+        LD C,0
+        EXX 
+        LD B,1
+        LD A,E
+        JR REDY
+
+PUT_BAR PUSH HL      ;DE-коорд.   HYW-высота
+        PUSH DE
+        PUSH DE
+        CALL ADDRZ
+        LD A,5
+        CALL PR_ONE
+        POP DE
+        LD A,E
+HYW     ADD A,0
+        DEC A
+        LD E,A
+        LD A,6
+        CALL PR_ONE
+        POP DE
+        INC E
+        CALL ADDRZ
+        LD (HL),255
+        INC H
+        LD (HL),129
+        EXX                  ;E' -высота всей линейки
+        LD A,E
+        EXX 
+        LD C,A
+        EXX                  ;C' -пропуск
+        LD A,C
+        EXX 
+        LD B,A
+        AND A
+        JR Z,DEL_ZER
+ZP_PRB  CALL D_HL
+        LD (HL),129
+        DEC C
+        DJNZ ZP_PRB
+DEL_ZER EXX                  ;D' -высота бара
+        LD A,D
+        EXX 
+        SUB 6
+        LD B,A
+        CALL D_HL
+        DEC C
+        LD (HL),189
+ZP_BGN  CALL D_HL
+        LD (HL),165
+        DEC C
+        DJNZ ZP_BGN
+        CALL D_HL
+        DEC C
+        LD (HL),189
+        DEC C
+        DEC C
+        DEC C
+ZERK    CALL D_HL
+        LD (HL),129
+        DEC C
+        JR NZ,ZERK
+        CALL D_HL
+        LD (HL),255
+        POP HL
+        RET 
+
+LISTER  LD HL,(YWIN)
+        PUSH HL
+X_LST   LD DE,0x0602        ;координаты списка в окне
+        ADD HL,DE
+        LD (YWIN),HL
+
+STR_LEN LD E,8             ;длина одной строки (симв)
+        LD D,0
+LST_TXT LD HL,0            ;адрес списка
+DLTR    LD A,0             ;расположение бегунка
+        AND A
+        JR Z,STRS1
+SEARCH  ADD HL,DE
+        DEC A
+        JR NZ,SEARCH
+
+STRS1   LD A,7     ;количество строк в списке
+        AND A
+        JR Z,ENND
+        LD B,A
+        LD DE,(YWIN)
+
+PR_LIST LD C,8     ;длина строки
+        PUSH DE
+        CALL PRINT
+        POP DE
+        INC E
+        LD (YWIN),DE
+        DJNZ PR_LIST
+
+ENND    POP HL
+        LD (YWIN),HL
+        RET 
+
+;-------------------------------------------------------------
+LETTERS LD A,32
+        LD (FIRST+1),A
+        LD A,255
+        LD (LAST+1),A
+        RET 
+
+DIGITS  LD A,48
+        LD (FIRST+1),A
+        LD A,58
+        LD (LAST+1),A
+        RET 
+
+EDIT
+        XOR A
+        LD (SYMPOS+1),A
+        LD A,B
+        LD (TXTLEN+1),A
+        PUSH HL
+        LD HL,(YWIN)
+        EX (SP),HL ;коорд. окна
+        LD (TXTADR+1),HL
+        CALL CAL_ABS
+        LD (YWIN),DE
+TXTADR  LD HL,0
+TXTLEN  LD C,0
+        LD DE,0
+        CALL PRINTXY
+        LD DE,0x0080
+SYMPOS  LD A,0
+        LD B,A
+        ADD A,A
+        ADD A,B
+        LD C,A
+        LD B,4
+        CALL DIVI
+        SUB 4
+        NEG 
+        AND A
+        JR Z,JEX
+        RLA 
+        LD B,A
+SCR_KR  AND A
+        RL E
+        RL D
+        DJNZ SCR_KR
+JEX     LD HL,(YWIN)
+        LD A,H
+        ADD A,C
+        LD H,A
+
+        CALL COOR_Z
+        INC H
+        LD (DREZ+1),HL
+        LD (DREZ1+1),HL
+        LD (SIGN+1),DE
+        LD (SIGN1+1),DE
+        XOR A
+        LD (FLASHER+1),A
+
+W_KEY   LD B,7
+FLASHER LD A,0
+        AND 127
+RATE1   CP 10
+DREZ    LD HL,0
+SIGN    LD DE,0
+        CALL Z,KURSOR
+        LD A,(FLASHER+1)
+        AND 128
+        LD C,A
+        LD A,(FLASHER+1)
+        AND 127
+        INC A
+RATE2   CP 11
+        JR NZ,NO_CHAN
+        LD A,C
+        XOR 128
+        LD (FLASHER+1),A
+        JR RD_KY
+NO_CHAN OR C
+        LD (FLASHER+1),A
+
+RD_KY   XOR A
+        LD (23560),A
+        HALT
+        LD A,(23560)
+        AND A
+        JR Z,W_KEY
+        LD A,(23560)
+        CP 6
+        JR Z,CAPS
+        CP 8
+        JR Z,KR_LFT
+        CP 9
+        JP Z,KR_RGT
+        CP 7
+        JP Z,CH_LAN
+        CP 12
+        JP Z,DELETE
+        CP 13
+        JR Z,EX_ED
+        CP 14
+        JR Z,EX_ED
+        LD C,A
+        ld a,0x7f
+		in a,(0xfe)
+		rra
+		JR c,EDIT_C
+        ld a,0x7f
+		in a,(0xfe)
+		rra
+        JR NC,EX_ED
+EDIT_C
+        CALL CORRECT
+REGISTR LD A,0
+        AND A
+        CALL NZ,RUSSIAN
+        LD A,C
+FIRST   CP 32
+        JR C,W_KEY
+LAST    CP 255
+        JR NC,W_KEY
+        LD A,(FLASHER+1)
+        LD B,7
+DREZ1   LD HL,0
+SIGN1   LD DE,0
+        AND 128
+        CALL NZ,KURSOR
+        JR PRINTABLE
+EX_ED   POP HL
+        LD (YWIN),HL
+        RET 
+
+PRINTABLE
+        LD A,(SYMPOS+1)
+        LD B,A
+        LD HL,(TXTADR+1)
+        ADDHLA
+        LD (HL),C
+        LD A,(TXTLEN+1)
+        DEC A
+        CP B
+        JP Z,TXTADR
+        LD A,B
+        INC A
+        LD (SYMPOS+1),A
+        JP TXTADR
+
+CAPS    LD A,(23658)
+        XOR 8
+        LD (23658),A
+        JP W_KEY
+
+KR_LFT  LD A,(SYMPOS+1)
+        AND A
+        JP Z,W_KEY
+        DEC A
+        LD (SYMPOS+1),A
+        JP TXTADR
+
+KR_RGT  LD A,(SYMPOS+1)
+        LD C,A
+        LD A,(TXTLEN+1)
+        DEC A
+        CP C
+        JP Z,W_KEY
+        LD A,C
+        INC A
+        LD (SYMPOS+1),A
+        JP TXTADR
+
+CH_LAN
+        LD A,(REGISTR+1)
+        XOR 1
+        LD (REGISTR+1),A
+        JP W_KEY
+
+DELETE
+        LD A,(SYMPOS+1)
+        LD C,A
+        AND A
+        JP Z,W_KEY
+        DEC A
+        LD C,A
+        LD A,C
+        LD HL,(TXTADR+1)
+        ADDHLA
+        LD (HL),32
+        LD A,C
+        LD (SYMPOS+1),A
+        JP TXTADR
+
+KURSOR  LD A,(HL)
+        XOR D
+        LD (HL),A
+        INC L
+        LD A,(HL)
+        XOR E
+        LD (HL),A
+        DEC L
+        INC H
+        DJNZ KURSOR
+        RET 
+
+CORRECT LD A,C
+        CP 195
+        RET C
+        SUB 195
+        LD HL,CORR_TAB
+        JR TSUR
+
+RUSSIAN LD HL,RUS_KBD
+        LD A,C
+        CP 255
+        RET Z
+        SUB 32
+TSUR    ADDHLA
+        LD A,(HL)
+        LD C,A
+        RET 
+
+PRINTOLD
+		ld de,(YTXT)
+		jr PRINTXY1
+PRINT
+        LD DE,0x0100
+
+PRINTXY LD (YTXT),DE
+PRINTXY1
+        PUSH BC
+		PUSH HL
+        LD BC,0xFC00
+        LD A,D
+        ADD A,A
+        ADD A,D
+        LD D,A          ;*3
+        XOR A
+        RR D
+        RRA 
+        RR D
+        RRA 
+        RLCA 
+        RLCA            ;*3/4
+        AND A           ;D-POSITION     A-SCROLL
+        JR Z,LFBORD
+        SUB 4
+        NEG 
+        LD L,A
+SMASK   AND A
+        RL B
+        RL C
+        RL B
+        RL C
+        DEC L
+        JR NZ,SMASK
+LFBORD
+        EX AF,AF' 
+        CALL ADDRZ
+        INC H
+        LD (PRADR+1),HL
+        EXX 
+        POP HL
+		POP BC
+
+WRITE   ld a,(PRADR+2)
+		cp 0x58
+		jp nc,SCROLUP
+		LD A,(HL)
+        INC HL
+        AND A
+        RET Z
+        CP 32
+        JR C,WRITE2
+        CALL PRSYM
+        LD A,(XTXT)
+        INC A
+        LD (XTXT),A
+        LD A,C
+        AND A
+        JR Z,WRITE
+        DEC C
+        RET Z
+        JR WRITE
+
+WRITE2
+        LD DE,(YTXT)
+		CP '\n'
+		jr z,WRITE_N
+        CP '\r'
+        JR NZ,POSIT
+        INC E
+WRITE_N
+		LD d,1
+        JR PRINTXY
+
+POSIT   CP 22
+        JR NZ,WRITE
+        LD D,(HL)
+        INC HL
+        LD E,(HL)
+        INC HL
+        JR PRINTXY
+
+
+PRSYM   EXX                     ;A- SYMBOL CODE
+        LD E,A                  ;CHANGE
+        LD D,high(FONT6X8)+1
+
+        EX AF,AF'
+PRADR   LD HL,0
+        AND A
+        JR NZ,NOLEF
+
+        INC A
+        EX AF,AF' 
+P1      LD A,(HL)
+        OR B
+        XOR B
+        LD (HL),A
+        LD A,(DE)
+        AND B
+        OR (HL)
+        LD (HL),A
+        INC D
+        INC H
+        LD A,H
+        AND 7
+        JR NZ,P1
+        JR NEBCA
+
+NOLEF   DEC A
+        JR NZ,NO2
+
+        LD A,2
+        EX AF,AF' 
+P2      LD A,(HL)
+        OR C
+        XOR C
+        LD (HL),A
+        LD A,(DE)
+        RLCA 
+        RLCA 
+        AND C
+        OR (HL)
+        LD (HL),A
+        INC L
+        LD A,(HL)
+        OR B
+        XOR B
+        LD (HL),A
+        LD A,(DE)
+        RLCA 
+        RLCA 
+        AND B
+        OR (HL)
+        LD (HL),A
+        DEC L
+        INC D
+        INC H
+        LD A,H
+        AND 7
+        JR NZ,P2
+IADR    LD A,(PRADR+1)
+        INC A
+        LD (PRADR+1),A
+
+NEBCA   RL B
+		RL C
+		RL B
+		RL C
+        EXX 
+        RET 
+
+        JR NEBCA
+
+NO2     DEC A
+        JR NZ,NO4
+        LD A,3
+        EX AF,AF' 
+P3      LD A,(HL)
+        OR C
+        XOR C
+        LD (HL),A
+        LD A,(DE) ;7
+        RRCA 
+        RRCA 
+        RRCA 
+        RRCA 
+        PUSH AF
+        AND C
+        OR (HL)
+        LD (HL),A
+        INC L
+        LD A,(HL)
+        OR B
+        XOR B
+        LD (HL),A
+        POP AF
+        AND B
+        OR (HL)
+        LD (HL),A
+        DEC L
+        INC D
+        INC H
+        LD A,H
+        AND 7
+        JR NZ,P3
+        JR IADR
+
+NO4     XOR A
+        EX AF,AF' 
+P4      LD A,(HL)
+        OR C
+        XOR C
+        LD (HL),A
+        LD A,(DE)
+        RRCA 
+        RRCA 
+        AND C
+        OR (HL)
+        LD (HL),A
+        INC L
+        LD A,(HL)
+        OR B
+        XOR B
+        LD (HL),A
+        LD A,(DE)
+        RRCA 
+        RRCA 
+        AND B
+        OR (HL)
+        LD (HL),A
+        DEC L
+        INC D
+        INC H
+        LD A,H
+        AND 7
+        JR NZ,P4
+        LD BC,0xFC00>>2
+        JR IADR
+
+MAKEWIND
+        MOV H,L,WIN_XPOS
+        MOV B,C,WIN_XPOS+2
+        LD (YWIN),HL
+		LD (YSIZ),BC
+        TEST FLG_REFRESH,WIN_OPT
+        JR Z,NO_PERE
+        PUSH HL
+		PUSH BC
+        CALL OPEN
+        POP BC
+		POP HL
+        TEST FLG_HEADER,WIN_OPT
+        JR Z,NO_HEAD
+        PUSH HL
+        CALL COOR_ATR
+        LD A,B
+SELCOLR LD (HL),HDRCOLOR
+        INC HL
+        DJNZ SELCOLR
+        LD B,A
+        POP HL
+        INC L
+        DEC C
+NO_HEAD CALL RAMKA
+NO_PERE MOV L,H,WIN_TXT
+        CALL TST_HL
+        RET Z
+        LD C,0
+        JP PRINT
+
+TAB_JP  ADD A,A         ;HL<- TABLE ADDRESS
+        ADDHLA
+        LD A,(HL)
+        INC HL
+        LD H,(HL)
+		LD L,A
+        JP (HL)
+
+TST_HL  LD A,L
+        AND H
+        INC A
+        JR NZ,NULHL
+        SCF 
+        RET 
+NULHL   LD A,L
+        OR H
+        RET 
+
+OPEN    PUSH HL
+        LD D,H
+		LD E,L   ;открыть окно
+        LD A,(WINS)
+        AMUL8           ;HL- координаты H- X L- Y
+
+        LD HL,REESTR    ;BC- размер
+        ADDHLA
+        STORHL D
+        STORHL E
+        STORHL B
+        STORHL C
+        LD DE,(FREE)
+        LD (HL),E  ;BEGIN
+        INC HL
+        LD (HL),D
+        POP HL
+        TEST FLG_NOBACK,WIN_OPT
+        JR NZ,CELES
+        PUSH BC
+		PUSH HL
+        CALL GETWIND
+        LD (FREE),DE
+        POP HL
+		POP BC
+CELES   CALL CLS_WIN
+        LD A,(WINS)
+        INC A
+MOWINS  LD (WINS),A
+        RET 
+
+CLOSE   LD A,(WINS)
+        AND A
+        RET Z
+        DEC A
+        AMUL8
+
+        LD HL,REESTR
+        ADDHLA
+
+        MOVHL D
+        MOVHL E
+        MOVHL B
+        MOVHL C
+        MOVHL A
+        LD H,(HL)
+		LD L,A
+        EX DE,HL
+        LD (FREE),DE
+        CALL PUTWIND
+        LD A,(WINS)
+        DEC A
+        JR MOWINS
+
+RAMKA
+        XOR A
+        LD D,A
+		LD E,A
+        DEC A
+        JR DRAW_R
+
+RAMK    LD A,85
+        LD DE,(ZNM)
+DRAW_R
+        LD (MODE1+1),A
+		LD (MODE2+1),A
+        LD (DRSKIP),DE
+        LD D,B
+		LD E,C
+        PUSH HL
+        CALL COOR_Z
+        EX (SP),HL
+        ADD HL,DE
+        POP DE
+        CALL COOR_Z
+        DEC L
+        CALL U_HL
+
+HORIZ   LD A,(DE)
+MODE1   XOR -1
+        LD (DE),A
+		LD A,(HL)
+MODE2   XOR -1
+        LD (HL),A
+        INC E
+        DEC L
+        DJNZ HORIZ
+        INC L
+        DEC E
+        LD B,C
+VECYC
+        LD A,(DE)
+MODE3   XOR 1
+        LD (DE),A
+		LD A,(HL)
+MODE4   XOR 128
+        LD (HL),A
+ZNM     DEC H
+        INC D
+DRSKIP  NOP 
+        NOP 
+        LD A,D
+        AND 7
+        JR NZ,VECYC
+
+RENO    INC H
+        DEC D
+        CALL U_HL
+		CALL D_DE
+        DJNZ VECYC
+        RET 
+
+CLS_WIN
+        CALL COOR_Z
+        PUSH HL
+        LD D,B
+		LD E,C
+
+ALM     LD A,L
+		LD B,D
+RJD     LD (HL),0
+        INC L
+        DJNZ RJD
+        LD L,A
+        INC H
+        LD A,H
+        AND 7
+        JR NZ,ALM
+        CALL D_HL+5
+        DEC E
+        JR NZ,ALM
+        POP HL
+
+        CALL ATR_CONVERT
+
+AL3     LD B,D
+COLOR   LD (HL),WINCOLOR
+        INC HL
+        DJNZ COLOR
+
+        LD A,32
+        SUB D
+        ADDHLA
+        DEC C
+        JR NZ,AL3
+        RET 
+
+
+GETWIND XOR A
+        JR GEPU
+
+PUTWIND LD A,0xEB
+GEPU    LD (MOD1),A
+		LD (MOD2),A
+		LD (MOD3),A
+		LD (MOD4),A
+GET_PUT
+        LD A,C
+		LD C,B
+		LD B,A
+        CALL COOR_Z
+        PUSH HL
+		PUSH BC
+
+ALLL    LD A,L          ;HL-SCREEN
+        PUSH BC         ;C-WIDTH
+        LD B,0
+MOD1    NOP 
+        LDIR 
+MOD2    NOP 
+        DEC HL
+        POP BC
+        LD L,A
+        INC H
+        LD A,H
+        AND 7
+        JR NZ,ALLL
+        CALL D_HL+5
+        DJNZ ALLL
+        POP BC
+		POP HL
+        CALL ATR_CONVERT
+ALLA
+        PUSH BC
+        LD B,0
+MOD3    NOP 
+        LDIR 
+MOD4    NOP 
+        POP BC
+        LD A,32
+        SUB C
+        ADDHLA
+        DJNZ ALLA
+        RET 
+
+PUT_SPRT
+        EXX 
+        BIT 2,C
+        EXX 
+        JR NZ,ABS_COORD
+        PUSH DE
+        EX DE,HL
+        CALL ADDRZ
+        POP DE          ;HL-SCR DE-DATA
+        JR PUSPR
+ABS_COORD
+        CALL COOR_Z
+PUSPR
+        PUSH HL
+        EXX 
+        BIT 0,C
+        EXX 
+        JR Z,ATTRZ
+
+        EX DE,HL
+        PUSH BC
+PSP1    LD A,E
+        PUSH BC
+        LD B,0
+        LDIR 
+        DEC DE
+        POP BC
+        LD E,A
+        INC D
+        LD A,D
+        AND 7
+        JR NZ,PSP1
+        CALL D_DE+5
+        DJNZ PSP1
+        POP BC
+        EX DE,HL
+ATTRZ   POP HL
+        EXX 
+        BIT 1,C
+        EXX 
+        RET Z
+
+        CALL ATR_CONVERT
+        EX DE,HL
+PATRA   PUSH BC
+        LD B,0
+        LDIR 
+        POP BC
+        LD A,32
+        SUB C
+        ADDDEA
+        DJNZ PATRA
+        RET 
+
+PUSHER
+        PUSH HL
+        LD A,L
+        ADD A,C
+        DEC A
+        LD L,A
+        CALL COOR_Z
+        LD A,H
+        OR 7
+        LD H,A
+        EX (SP),HL      ;LEFT BOTTOM
+        LD A,H
+        ADD A,B
+        DEC A
+        LD H,A
+        CALL COOR_Z     ;RIGHT TOP
+        EX (SP),HL
+        LD A,C
+        AMUL8
+        DEC A
+        LD C,A
+        PUSH BC
+PROW2   LD D,H
+		LD E,L
+        CALL U_HL
+        PUSH HL
+		PUSH BC
+        AND A
+PROW1   LD A,(HL)
+        RRA 
+        LD (DE),A
+        INC L
+		INC E
+        DJNZ PROW1
+        POP BC
+		POP HL
+        DEC C
+        JR NZ,PROW2
+        LD A,B
+CLRRW1  LD (HL),C
+        INC L
+        DJNZ CLRRW1
+        LD B,A
+
+PUSADR  CALL WAITKEY
+        POP BC
+		POP HL
+
+PROW4   LD D,H
+		LD E,L
+        CALL D_HL
+        PUSH HL
+		PUSH BC
+        AND A
+PROW3   LD A,(HL)
+        RLA 
+        LD (DE),A
+        DEC L
+		DEC E
+        DJNZ PROW3
+        POP BC
+		POP HL
+        DEC C
+        JR NZ,PROW4
+CLRRW2  LD (HL),C
+        DEC L
+        DJNZ CLRRW2
+        RET 
+
+PR_ONE  EX AF,AF' 
+        CALL ADDRZ
+        EX AF,AF' 
+        EX DE,HL
+        LD L,A
+        LD H,high(FONT6X8)
+PRON    LD A,(HL)
+		LD (DE),A
+        INC H
+		INC D
+        LD A,D
+        INC A
+        AND 7
+        JR NZ,PRON
+        RET 
+
+        #ifndef NOCOMBO
+COMBOBOX
+        LD (LISTD),A
+        LD (LISTA),DE
+        LD (CBWIN),HL
+        LD (CBWIN+2),BC
+        LD (CBACT+2),BC
+        LD A,B
+        EXX 
+        LD (LISTH),A
+        LD A,D
+        LD (LISTC),A
+        LD A,E
+        LD (LISTL),A
+        EXX 
+        LD HL,(YWIN)
+        PUSH HL
+		PUSH IX
+        LD IX,CBWIN
+        CALL WINDOW
+        INC A
+        LD A,C
+        PUSH AF
+        CALL CLOSE
+        POP AF
+		POP IX
+		POP HL
+        LD (YWIN),HL
+        RET NZ
+        LD A,-1
+        RET 
+
+CBWIN   DEFB 0,0,0,0,10
+        DEFB 0
+        DEFW 0
+        DEFW CBACT
+        DEFW 0,0,0,0,0
+        #ifndef NOSLB
+        DEFW 0
+        #endif 
+        DEFW CBLIST
+        DEFW -1
+
+CBACT   DEFB 0,0,0,0,1,-1
+
+CBLIST  DEFB 0
+LISTH   DEFB 0
+LISTC   DEFB 0
+        DEFW 0
+LISTD   DEFB 0
+LISTA   DEFW 0
+LISTL   DEFB 0
+        DEFB -1
+        #endif   ;COMBOBOX
+
+        #include "EXTERN.S01"
+
+

@@ -1,0 +1,15 @@
+Файлы:
+
+zxinet_sch.pdf        -- схема
+zxinet_bom.ods        -- BOM (bill of materials), список компонентов
+zxnetusb_prm_revC.odt -- документация для программистов
+mount_top.pdf,
+mount_bot.pdf         -- монтажные схемы
+zxinet_solder.odt     -- рекомендации по сборке
+
+Для просмотра документов ods и odt используйте пакет libreoffice или openoffice.
+
+
+
+
+

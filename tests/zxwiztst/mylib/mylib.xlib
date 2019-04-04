@@ -1,0 +1,4 @@
+fetch-modules graf.r01 mylib.r01
+fetch-modules myim2.r01 mylib.r01
+list-modules mylib.r01
+quit

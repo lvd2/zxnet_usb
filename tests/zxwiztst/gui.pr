@@ -1,0 +1,14 @@
+<NotepadPlus>
+    <Project name="gui">
+        <File name="COVER.s01" />
+        <File name="EXTERN.s01" />
+        <File name="FONT6X8.s01" />
+        <File name="MACROS.s01" />
+        <File name="SAMPLE.s01" />
+        <File name="TEMPLATE.asm" />
+        <File name="build.bat" />
+        <File name="Cstartup.s01" />
+        <File name="main.c" />
+        <File name="Lnk.xcl" />
+    </Project>
+</NotepadPlus>

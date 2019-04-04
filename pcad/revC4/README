@@ -1,0 +1,8 @@
+Changes made to revC board:
+ + added onboard +5v power connector (2.54mm pads)
+ + fixed silk components marking (moved to the visible places)
+ + changed/added some texts
+ + removed 45 degrees components
+
+---!!! No need to change schematics !!!---
+

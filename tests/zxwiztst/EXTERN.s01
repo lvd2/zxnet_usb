@@ -1,0 +1,1823 @@
+;***************************************************************
+;*
+;* EXTERN.H
+;*
+;* Взаимодействие с внешними устройствами.Процедуры,переменные
+;* Memory,FDD,Kbd,Mice
+;*
+;* (C) Vitamin/CAIG/2001  2001-2006
+;*
+;* Обозначения в файле MACROS.H
+;*
+;* Revision 9.01.2006
+;*
+;***************************************************************
+
+#if 0
+Mem:  DISKBUF
+Desc: Адрес буфера диска (#900 байт)
+Note: Нужен если !NOFILER или RDCAT
+---
+Mem:  LIST
+Desc: Адрес символьного списка файлов (12*число максимально ви-
+      димых файлов в файлере)
+Note: Нужен если !NOFILER. Длина задается в LISTLEN
+---
+Mem:  NUMLIST
+Desc: Адрес таблицы выбора файлов (число максимально видимых
+      файлов в файлере
+Note: Нужен если !NOFILER
+---
+Mem:  FREERAM
+Desc: Адрес свободной области памяти для свопинга окон
+===
+Var:  SPEED
+Desc: BYTE - скорость движения стрелки от клавиатуры
+---
+Var:  SHOWDEL
+Desc: BYTE 0/255 - показывать ли удаленные файлы в файлере
+Note: Нужен если !NOFILER
+===
+Func: FSTPAGE
+Desc: Включение страницы 0
+Uses: A
+Note: NOMEMDRV запрещает генерацию
+---
+Func: PAGA
+Desc: Включение выбранной страницы
+In:   A- page
+Note: В PAGES задается число страниц. Номер порядковый,
+      страницы 2 и 5 пропускаются автоматически.
+      NOMEMDRV запрещает генерацию.
+---
+Func: SETDRIVER
+Desc: Устанавливает драйвер памяти
+In:   HL= {PENT128,PENT512,SCORP256,PROFI,ATM}
+      A- число страниц (6,30,14,62,30 соответственно)
+      Доступно только при HIMEMDRV
+===
+Func: TDOS
+Desc: Реализация #3D13 (с перехватом ошибок).
+Out:  Z- OK, NZ- ошибка, IY=23610, HL'=10072
+Note: Если используются IM2, то при ключе IM2MOD должны быть
+      объявлены SUSPENDIM2,RESUMEIM2, сохраняющие используемые
+      регистры
+---
+Func: READ_CAT
+Desc: Чтение каталога
+Note: Включается при !NOFILER||RDCAT
+---
+Func: FILER
+Desc: Диалог выбора файла
+In:   HL- адрес таблицы сортировки (набор расширений, завер-
+      шающийся 255). '?' означает любой символ.
+      REREAD= 0/255 -надо ли перечитывать каталог.
+Out:  FILNAME- данные по файлу (16 байт)
+Note: Используется значение SHOWDEL.
+---
+Func: LOADFILE
+Desc: Загрузка файла в память
+In:   HL- имя файла (11 символов, '?'- любой символ)
+      DE- адрес загрузки
+Out:  (23796)- валиден, Z- OK, NZ- ошибка
+Note: запрещен при NOLOADFIL
+---
+Func: FIND_FILE
+Desc: Поиск файла в каталоге
+In:   HL- имя файла (как в LOADFILE)
+Out:  FILNAME- 16 байт данных, C- номер файла в каталоге
+Note: Запрещен при NOLOADFIL&&NOSAVEFIL&&!RDCAT
+      DE- сохраняется
+---
+Func: GET_FILE
+Desc: Получение данных файла по его номеру
+In:   C- номер файла
+Out:  HL- указатель в буфере на данные
+Uses: DE
+Note: Запрещен при NOFILER&&NOSAVEFIL&&!RDCAT
+---
+Func: SAVEFILE
+Desc: Запись файла на диск
+In:   FILENAME- имя файла (11 символов), HL- адрес, DE- длина
+Out:  (23796)-валиден, Z- OK, NZ- ошибка
+Note: Если файл существует, он перезаписывается, если это
+      подтверждено.
+      NOSAVEFIL запрещает генерацию
+===
+Func: NOKEY
+Desc: Ожидание нажатия клавиши на клавиатуре (или FIRE на мыше)
+Uses: A
+---
+Func: WAITKEY
+Desc: Ожидание отпускания клавиши на клавиатуре или FIRE на мыш
+Uses: A
+---
+Func: READKEY
+Desc: Определение текущей нажатой клавиши
+Out:  A- код (CAPS регистр), 0- если не нажато
+---
+Func: POINT
+Desc: Один цикл стрелки с опросом клавиатуры
+Note: IX- сохраняется
+---
+Func: FIRA
+Desc: Опрос контролов на FIRE
+Out:  CARRY- нажат
+---
+Func: PRINTS
+Desc: Вывод стрелки с запоминанием фона
+In:   X_C=(XP,YP)
+Uses: IX+
+---
+Func: RESTS
+Desc: Восстановление фона под стрелкой
+Note: PRINTS настраивает процедуру
+---
+Func: KEYS
+Desc: Опрос устройств ввода изменение координат X_C
+Note: Использутся парамер SPEED
+===
+Func: D_HL
+Desc: Пересчет HL на линию вниз в экране
+Uses: A
+---
+Func: D_DE
+Note: аналогично D_HL
+---
+Func: U_HL
+Desc: Пересчет HL на одну линю вверх в экране
+Uses: A
+---
+Func: COOR_Z
+Desc: Расчет адреса в экране
+In:   HL=(XZ,YZ)
+Out:  HL- адрес
+Uses: A
+---
+Func: ATR_CONVERT
+Desc: Пересчет адреса в знакоместе в адрес атрибутов
+In:   HL
+Out:  HL
+Uses: A
+---
+Func: COOR_ATR
+Desc: Расчет адреса атрибутов
+In:   HL=(XZ,YZ)
+Out:  HL- адрес
+Uses: A
+---
+Func: MULS
+Desc: HL=H*E
+Uses: DE
+---
+Func: MULT
+Desc: HL=DE*A
+Uses: DE
+---
+Func: DIV
+Desc: BC=BC/DE HL=BC%DE
+Uses: A
+---
+Func: DIVI
+Desc: C=C/B A=C%B
+---
+Func: STR
+Desc: Перевод числа в десятиричный стринг с лидирующими нулями
+In:   DE- куда, C-режим (=0:A-число,3цифры; =1:HL-число,5цифр)
+Uses: B
+---
+Func: VAL
+Desc: Преобразование десятиричного стринга в число
+In:   DE- строка
+Out:  HL- число
+Uses: A,BC
+Note: Преобразование идет пока встречаются символы 0..9,
+      переполнение не учитывается.
+---
+Func: RECALC
+Desc: X_C(XP,YP)->Y_ZN(YZ,XZ)
+Uses: A,HL,DE
+---
+Func: CAL_COR
+Desc: Получение оконных координат активой зоны
+In:   A- номер зоны
+Out:  DE(XZ,YZ)- относительные координаты
+---
+Func: CAL_ABS
+Desc: Пересчет оконных координат в экранные
+In:   DE(XZ,YZ)
+Out:  DE(XZ,YZ)
+Uses: A
+---
+Func: ADDRZ
+Desc: Получение экранного адреса по оконным координатам
+In:   DE(XZ,YZ)
+Out:  HL- адрес
+Uses: A
+---
+Func: HITTEST
+Desc: Проверка попадания координат в область
+In:   HL- точка, DE- координаты области, BC- размер
+Out:  CARRY- если не попадает
+
+#endif
+SCROLUP
+	push bc
+	push hl
+	ld		hl,0x4020
+	ld		de,0x4000
+suploop
+	push de
+	push hl
+	ld		bc,32
+	ldir
+	pop		hl
+	pop		de
+	call	D_DE
+	call	D_HL
+	ld a,h
+	cp 0x58
+	jr c,suploop
+	ex de,hl
+	ld b,8
+suploop1
+	push	hl
+	ld		bc,31
+	ld (hl),0
+	ld d,h
+	ld e,l
+	inc e
+	ldir
+	pop		hl
+	call	D_HL
+	ld a,h
+	cp 0x58
+	jr c,suploop1
+	ld de,0x0017
+	pop hl
+	pop bc
+	jp PRINTXY
+
+myint:
+		push af
+		push bc
+		push iy
+		push ix
+		ld bc,0x82ab
+		in a,(c)
+		ld (int_a+1),a
+		and 0xfb
+		out (c),a
+		ld iy,0x5c3a
+		call 0x0038
+		di
+		ld bc,0x82ab
+int_a:
+		ld a,0x0c
+		out (c),a
+		pop ix
+		pop iy
+		pop bc
+		pop af
+		ei
+		ret
+
+;---- MEMORY ---------
+        #ifndef NOMEMDRV
+FSTPAGE
+        XOR A
+
+PAGA    PUSH BC     ;переключатель страниц
+PAGES   EQU $+1
+        CP 6
+        JP NC,ERRORT
+        LD (CURPAG),A
+        CP 2
+        JR C,PP1
+        CP 4
+        JR C,PP2
+        INC A
+PP2     INC A
+PP1
+        #ifdef HIMEMDRV
+        JP PENT128
+        #endif 
+
+PENT128 AND 7
+        OR 16
+OUTR    LD      BC,32765
+        OUT     (C),A
+ERRORT  POP     BC
+        RET 
+
+        #ifdef HIMEMDRV
+SETDRIVER
+        LD (PP1+1),HL
+        LD (PAGES),A
+        RET 
+
+PENT512 LD C,A
+        AND 24
+        RLA 
+        RLA 
+        RLA 
+        LD B,A
+        LD A,C
+        AND 7
+        OR B
+        JR PENT128+2
+
+SCORP256
+        LD (S1+1),A
+        AND 8
+        RLA 
+        LD BC,#1FFD
+S2      OUT (C),A
+S1      LD A,0
+        AND 7
+        OR 16
+        LD B,#7F
+        JR OUTR+3
+
+PROFI
+        LD (S1+1),A
+        AND 56
+        RRCA 
+        RRCA 
+        RRCA 
+        LD BC,#DFFD
+        JR S2
+
+ATM     LD (S1+1),A
+        AND 24
+        RRCA 
+        RRCA 
+        RRCA 
+        LD BC,#FDFD
+        JR S2
+        #endif 
+        #endif 
+
+;---- FDD --------
+;  TR-DOS VARIABLES
+DRIVE   EQU     23798
+DRIVE1  EQU     23800
+DRIVE2  EQU     23801
+TIMES   EQU     23802
+CUR_TRK EQU     23797
+CUR_SEC EQU     23796
+FILNAME EQU     23773
+FILEXT  EQU     23781
+FILLENG EQU     23784
+FILVOL  EQU     23786
+FILSEC  EQU     23787
+FILTRK  EQU     23788
+
+TDOS
+        #ifdef IM2MOD
+        CALL SUSPENDIM2
+        #endif 
+        LD IY,23610
+        EXX 
+        LD HL,10072
+        EXX 
+        LD (ERR_ST+1),SP
+        PUSH HL
+		PUSH AF
+        XOR A
+        LD (HOWER+1),A
+        LD L,A
+		LD H,A
+        LD (0x5D0F),HL
+        LD A,195
+        LD (23746),A
+        LD HL,DRIVER
+        LD (23747),HL
+        POP AF
+		POP HL
+        LD (0x5C3D),SP
+        CALL 0x3D13
+
+RETER   
+		#ifdef IM2MOD
+        CALL RESUMEIM2
+        #endif 
+        LD A,195
+        LD (23746),A
+        LD HL,(0x5CB2)
+        DEC HL
+		DEC HL
+        LD (HL),0x13
+        DEC HL
+        LD (HL),3
+        LD (0x5C3D),HL
+        LD (IY+0),-1
+HOWER   LD A,0
+        AND A
+        RET 
+
+DRIVER  LD (ERHL+1),HL
+        LD (ERDE+1),DE
+        LD E,A
+        LD A,(23823)
+        AND A
+        JR NZ,ERR_ST
+        LD A,E
+        POP HL
+        AND A
+        LD DE,16
+        SBC HL,DE
+        JR Z,ERR_ST
+ZATYK
+ERHL    LD HL,0
+ERDE    LD DE,0
+        RET 
+
+ERR_ST  LD SP,0
+        LD A,(23823)
+        LD HL,(YWIN)
+        PUSH HL
+        CALL D_ERROR
+        XOR A
+        LD L,A
+		LD H,A
+        LD (23823),HL
+        POP HL
+        LD (YWIN),HL
+        CPL 
+        LD (HOWER+1),A
+        JP RETER
+		
+		#ifndef NOFILER
+			#define TEMPDEF	
+		#endif 
+		#ifdef RDCAT
+			#ifndef TEMPDEF
+				#define TEMPDEF	
+			#endif
+		#endif 
+        #ifdef TEMPDEF
+		#undef TEMPDEF
+        ;#ifndef NOFILER|(?RDCAT+1) ;NOFILER|(?RDCAT+1)
+READ_CAT
+        PUSH HL
+        LD HL,DISKBUF
+        LD DE,0
+        LD BC,0x0905
+        CALL TDOS
+        #ifndef NOFILER
+        LD A,-1
+        LD (HOW_READ+1),A
+        #endif 
+        POP HL
+        RET Z
+
+        LD HL,DISKBUF
+        LD DE,DISKBUF+1
+        LD BC,0x8FF
+        LD (HL),L
+        LDIR 
+        RET 
+        #endif 
+
+        #ifndef NOFILER
+FILER                   ;файлер   HL-адрес таблицы сортировки
+        LD (STAKA+1),SP
+        CALL WAITKEY
+        LD (MSKADR+1),HL
+HOW_READ                ;на выходе: в FILNAME-данные по файлу
+        LD A,0
+REREAD=$+1
+        AND 0
+        CALL Z,READ_CAT
+        LD A,(HOWER+1)
+        AND A
+        JR NZ,STAKA1
+        CALL CL_LIST
+        LD A,8
+        LD (LISA+3),A
+MSKADR  LD HL,0
+        CALL SEL_SOR
+        LD A,C
+        LD (FILS),A
+        CALL PARAMS
+
+        LD IX,FIL_WIN
+        CALL WINDOW
+        CP 255
+        JR Z,STAKA
+        CP 254
+        JP NZ,SELD
+        LD L,C
+        LD H,high(NUMLIST)
+        LD C,(HL)
+        CALL GET_FILE
+        LD DE,FILNAME
+        LD BC,16
+        LDIR 
+STAKA   LD SP,0
+        PUSH AF
+        CALL CLOSE
+        POP AF
+        RET 
+
+STAKA1
+        LD A,0
+        JP SELD
+        LD (HOW_READ+1),A
+        LD SP,(STAKA+1)
+        RET 
+
+
+FIL_WIN DEFB 8,8,16,14,15
+        DEFB 0
+        DEFW FIL_TXT
+        DEFW FIL_LGT
+        DEFW 0
+        DEFW FIL_SPT
+        DEFW 0
+        DEFW 0
+        #ifndef NOSLB
+        DEFW 0
+        #endif 
+        DEFW 0
+        DEFW FIL_LST
+        DEFW SEL_DRV
+        DEFW -1
+
+FIL_TXT DEFB 'Открыть файл:',13
+        DEFB 'Диск:'
+DISKNAME
+        DEFB '        '
+        DEFB 13
+        DEFB 'Файлов:'
+FILES   DEFB '000',13
+        DEFB 'Свободно:'
+DISKFRE DEFB '00000',0
+
+FIL_LGT
+        DEFB 13, 3, 2, 1, 5
+        DEFB 13, 4, 2, 1, 5
+        DEFB 13, 5, 2, 1, 5
+        DEFB 13, 6, 2, 1, 5
+LISA    DEFB 1, 5,11, 8, 1
+        DEFB 255
+
+FIL_SPT
+        DEFB 13,3,2,1,1
+        DEFW DI_A
+        DEFB 13,4,2,1,1
+        DEFW DI_B
+        DEFB 13,5,2,1,1
+        DEFW DI_C
+        DEFB 13,6,2,1,1
+        DEFW DI_D
+        DEFB -1
+
+DI_A    DEFB 255,254,160,2,199,244,168,2
+        DEFB 207,244,168,18,200,20,0,0
+DI_B    DEFB 255,254,160,10,207,228,160,18
+        DEFB 207,228,168,18,207,228,0,0
+DI_C    DEFB 255,254,160,2,207,244,160,2
+        DEFB 200,4,168,2,199,244,0,0
+DI_D    DEFB 255,254,160,2,207,228,160,18
+        DEFB 200,20,168,18,207,244,0,0
+
+
+FIL_LST DEFB 4,8
+FILS    DEFB 0
+        DEFW 0
+FIL_DLT DEFB 0
+        DEFW LIST
+        DEFB 12
+        DEFB -1
+
+SEL_DRV LD HL,(YWIN)
+        LD DE,0x0D03
+        ADD HL,DE
+        LD A,(DRIVE)
+        AND 3
+        LD (STAKA1+1),A
+        ADD A,L
+        LD L,A
+        CALL COOR_ATR
+        LD (HL),2
+        INC L
+        LD (HL),2
+        RET 
+
+PARAMS  LD HL,DISKBUF+0x800+0xE4
+        LD A,(HL)
+        LD DE,FILES
+        LD C,0
+        CALL STR
+        INC HL
+        LD E,(HL)
+        INC HL
+        LD D,(HL)
+        PUSH HL
+        LD HL,DISKFRE
+        EX DE,HL
+        LD C,1
+        CALL STR
+        POP HL
+        LD DE,0xF5-0xE6
+        ADD HL,DE
+        LD DE,DISKNAME
+        LD BC,8
+        LDIR 
+        RET 
+
+SELD    AND 3
+        LD C,1
+        CALL TDOS
+        PUSH AF
+        XOR A
+        LD (HOW_READ+1),A
+        LD (FIL_DLT),A
+        CALL CLOSE
+        POP AF
+        JP Z,HOW_READ
+
+        LD IX,NODEFWIN
+        CALL WINDOW
+        PUSH AF
+        CALL WAITKEY
+        CALL CLOSE
+        POP AF
+        JR SELD
+
+NODEFWIN  DEFB 9,10,14,4,7
+        DEFB 0
+        DEFW NODTXT
+        DEFW NODLGT
+        DEFW -1
+
+NODTXT  DEFB 'Выберите диск:',13,13
+        DEFB '  A   B   C   D',0
+
+NODLGT  DEFB 1,2,3,1,3
+        DEFB 4,2,3,1,3
+        DEFB 7,2,3,1,3
+        DEFB 10,2,3,1,3
+        DEFB -1
+
+
+CL_LIST
+        PUSH HL
+        LD HL,LIST
+        LD DE,LIST+1
+        LD BC,LISTLEN-1
+        LD (HL),L
+        LDIR 
+        POP HL
+        RET 
+
+
+SEL_SOR EXX 
+        LD HL,NUMLIST
+        LD C,0
+        EXX 
+
+SORT_NAME
+        LD DE,LIST
+SORTIR  LD A,(HL)
+        INC A
+        JR NZ,NOLA
+        EXX 
+        LD C,L
+        RET 
+NOLA
+        LD IX,DISKBUF
+
+SEARFL  LD A,(IX+0)
+        AND A
+        JR Z,NEXMASK
+        CP 32
+        JR NC,SHOFIL
+        LD A,(SHOWDEL)
+        AND A
+        LD BC,16
+        JR Z,NODELF
+        LD (IX+0),'?'
+SHOFIL  LD BC,0x301
+        PUSH HL
+FINEX   LD A,(HL)
+        CP '?'
+        JR Z,YAE1
+        CP (IX+8)
+        JR Z,YAE1
+        LD C,0
+YAE1    INC HL
+        INC IX
+        DJNZ FINEX
+        POP HL
+        BIT 0,C
+        JR Z,NETOE
+        EXX 
+        LD (HL),C
+        INC HL
+        LD (HL),0
+        EXX 
+        LD B,8
+COPNMA  LD A,(IX-3)
+        LD (DE),A
+        INC IX
+        INC DE
+        DJNZ COPNMA
+        LD A,32
+        LD (DE),A
+        INC DE
+        CALL CORREC
+        CALL CORREC
+        CALL CORREC
+        INC IX
+        INC IX
+SEARFL_ EXX 
+        INC C
+        EXX 
+        JR SEARFL
+NETOE   LD BC,13
+NODELF  ADD IX,BC
+        JR SEARFL_
+NEXMASK INC HL
+        INC HL
+        INC HL
+        EXX 
+        LD C,0
+        EXX 
+        JR SORTIR
+
+
+CORREC  LD A,(IX-3)
+        CP 48
+        JR NC,OK_L
+        LD A,32
+OK_L    CP 123
+        JR C,OK_S
+        LD A,32
+OK_S    LD (DE),A
+        INC DE
+        INC IX
+        RET 
+
+        #endif   ;NOFILER
+
+        #ifndef NOLOADFIL
+LOADFILE                        ;HL-NAME DE-ADRESS
+        CALL FIND_FILE
+        AND A
+        RET NZ
+        LD HL,(FILSEC)
+        LD A,(FILVOL)
+        LD B,A
+        LD C,5
+        EX DE,HL
+        JP TDOS
+        #endif 
+
+
+        ;IFN ?NOLOADFIL|?NOSAVEFIL|(?RDCAT+1)
+		#ifndef NOLOADFIL
+			#define TEMPDEF	
+		#endif 
+		#ifdef RDCAT
+			#ifndef TEMPDEF
+				#define TEMPDEF	
+			#endif
+		#endif 
+		#ifndef NOSAVEFIL
+			#ifndef TEMPDEF
+				#define TEMPDEF	
+			#endif
+		#endif 
+        #ifdef TEMPDEF
+		#undef TEMPDEF
+FIND_FILE
+        PUSH DE
+		PUSH HL
+        CALL READ_CAT
+        POP HL
+        LD DE,FILNAME
+        LD BC,11
+        LDIR 
+
+        LD HL,DISKBUF
+        LD C,128
+SEAR    LD DE,FILNAME
+        PUSH HL
+        LD A,(HL)
+        AND A
+        JR Z,ENCAT
+        LD B,11
+CHECKS
+        LD A,(DE)
+        CP '?'
+        JR Z,ANYSYM
+        CP (HL)
+        JR NZ,NETOTS
+ANYSYM  INC HL
+        INC DE
+        DJNZ CHECKS
+        POP HL
+        PUSH BC
+        LD DE,FILNAME
+        LD BC,16
+        LDIR 
+        POP BC
+        POP DE
+        LD A,128
+        SUB C
+        LD C,A
+        XOR A
+        RET 
+
+NETOTS  POP HL
+        LD A,16
+        ADDHLA
+        DEC C
+        JR NZ,SEAR
+NOFF    POP DE
+        LD A,-1
+        RET 
+ENCAT   POP HL
+        JR NOFF
+        #endif 
+
+        ;IFN ?NOFILER|?NOSAVEFIL|(?RDCAT+1)
+		#ifndef NOFILER
+			#define TEMPDEF	
+		#endif 
+		#ifdef RDCAT
+			#ifndef TEMPDEF
+				#define TEMPDEF	
+			#endif
+		#endif 
+		#ifndef NOSAVEFIL
+			#ifndef TEMPDEF
+				#define TEMPDEF	
+			#endif
+		#endif 
+        #ifdef TEMPDEF
+		#undef TEMPDEF
+GET_FILE
+        LD L,C
+        LD H,0
+        ADD HL,HL
+        ADD HL,HL
+        ADD HL,HL
+        ADD HL,HL
+        LD DE,DISKBUF
+        ADD HL,DE
+        RET 
+        #endif 
+
+
+        #ifndef NOSAVEFIL
+REWRDIAL DEFB 9,12,14,5,7
+        DEFB 0
+        DEFW REWTXT
+        DEFW REWLGT
+        DEFW REWHOT
+        DEFW -1
+
+REWTXT  DEFB 'Файл существует!',13,13
+        DEFB 'Переписать',13
+        DEFB 'Отмена',0
+
+REWLGT  DEFB 0,2,14,1,3
+        DEFB 0,3,14,1,3
+        DEFB -1
+
+REWHOT  DEFB 13
+        DEFW 0
+        DEFB 14
+        DEFW 1
+        DEFB -1
+
+SAVEFILE
+        PUSH HL
+		PUSH DE
+        LD DE,FILNAME
+        EX DE,HL
+        CALL FIND_FILE
+        AND A
+        JR NZ,FYOK
+
+        PUSH BC
+        PUSH IX
+        LD IX,REWRDIAL
+        CALL WINDOW
+        PUSH AF
+        CALL CLOSE
+        POP AF
+        POP IX
+
+        AND A
+        JR Z,PAAGE
+
+        POP HL
+		POP HL
+		POP HL
+        LD A,-1
+        RET 
+
+PAAGE
+        POP BC
+
+FYOK    POP DE
+		POP HL
+        AND A
+        JR NZ,NETFAI
+        LD (STHL+1),HL
+        LD (STDE+1),DE
+        LD (FILLENG),DE
+        DEC DE
+        LD B,D
+        INC DE
+        INC B
+        LD A,(FILVOL)
+        CP B
+        JR NZ,DELREW
+        PUSH HL
+        CALL GET_FILE
+        LD DE,FILNAME
+        EX DE,HL
+        LD BC,11
+        LDIR 
+        POP HL
+        LD A,(FILVOL)
+        LD DE,(FILSEC)
+        JP SAFILA
+DELREW  PUSH HL
+        CALL GET_FILE
+        LD (HL),1
+        LD A,(DISKBUF+0x800+0xF4)
+        INC A
+        LD (DISKBUF+0x800+0xF4),A
+        LD HL,DISKBUF
+        LD DE,0
+        LD BC,0x0906
+        CALL TDOS
+        POP HL
+STHL    LD HL,0
+STDE    LD DE,0
+        JP SAVEFILE
+
+NETFAI
+
+        PUSH HL         ;запись файла
+        LD (FILEM+1),DE         ;DE-LENGHT IN BYTES
+        DEC DE                  ;FILNAME-DATA FOR FILE
+        INC D                   ;HL-START
+        LD A,D
+        LD (FLEN+1),A
+        LD (SECLEN+1),A
+        LD A,(HOWER+1)
+        AND A
+        JP NZ,NEST
+FLEN    LD DE,0
+        LD HL,(DISKBUF+0x800+0xE5)
+        SBC HL,DE
+        JR C,NOROMZ
+        JR Z,NOROMZ
+        LD A,(DISKBUF+0x800+0xE4)
+        CP 128
+        JR NC,NOROMZ
+        LD HL,DISKBUF
+        LD DE,16
+FFREE   LD A,(HL)
+        AND A
+        JR Z,ECAT
+        ADD HL,DE
+        JR FFREE
+
+ECAT    LD DE,FILNAME
+        EX DE,HL
+        LD BC,11
+        LDIR 
+
+FILEM   LD HL,0
+        EX DE,HL
+        LD (HL),E
+        INC HL
+        LD (HL),D
+        LD DE,(DISKBUF+0x800+0xE1)
+        INC HL
+SECLEN  LD (HL),0
+        INC HL
+        LD (HL),E
+        INC HL
+        LD (HL),D
+        LD HL,(DISKBUF+0x800+0xE5)
+        LD DE,(FLEN+1)
+        AND A
+        SBC HL,DE
+        LD (DISKBUF+0x800+0xE5),HL
+        LD HL,(DISKBUF+0x800+0xE1)
+        LD (POSITZ+1),HL
+        ADD HL,DE
+        LD A,L
+        AND 15
+        LD E,A
+        XOR L
+        RRA 
+        RRA 
+        RRA 
+        RRA 
+        ADD A,H
+        LD D,A
+        LD (DISKBUF+0x800+0xE1),DE
+        LD A,(DISKBUF+0x800+0xE4)
+        INC A
+        LD (DISKBUF+0x800+0xE4),A
+
+        POP HL
+POSITZ  LD DE,0
+        LD A,(FLEN+1)
+SAFILA  LD B,A
+        LD C,6
+        CALL TDOS
+        LD HL,DISKBUF
+        LD DE,0
+        LD BC,0x0906
+        JP TDOS
+
+NEST    POP HL
+        RET 
+
+NOROMZ  POP HL
+        LD A,3
+        #endif 
+
+
+D_ERROR PUSH AF
+        LD IX,NORWIN
+        CALL MAKEWIND
+        POP AF
+        ADD A,A
+        LD HL,MESSTAB
+        ADDHLA
+        LD E,(HL)
+        INC HL
+        LD D,(HL)
+        LD HL,0x0102
+        EX DE,HL
+        CALL PRINTXY
+        CALL WAITKEY
+        CALL NOKEY
+        CALL WAITKEY
+        JP CLOSE
+
+MESSTAB DEFW WPROT
+        DEFW DIRROR
+        DEFW DIRROR
+        DEFW NOROM
+        DEFW NOROM
+        DEFW NOROM
+        DEFW NODISK
+        DEFW DIRROR
+        DEFW DIRROR
+        DEFW DIRROR
+
+NORWIN  DEFB 8,10,16,4,15
+        DEFB 0
+        DEFW ERTEX
+        DEFW 65535
+
+ERTEX   DEFB 'Ошибка:',0
+NOROM   DEFB '   Нет места!',0
+DIRROR  DEFB 'Проблема с диском!',0
+NODISK  DEFB '    Нет диска!',0
+WPROT   DEFB ' Диск защищен!',0
+
+;------- KBD&MICE ---------
+
+NOKEY   XOR A       ;процедура ожидания нажатия клавиши
+        IN A,(254)
+        XOR 31
+        AND 31
+        RET NZ
+        LD A,(SYSFLG)
+        AND 4
+        JR Z,NOKEY
+        CALL REFFIR
+        LD A,(FIRE)
+        RLA 
+        JR NC,NOKEY
+        RET 
+
+WAITKEY XOR A       ;процедура ожидания отпускания клавиши
+        IN A,(254)
+        XOR 31
+        AND 31
+        JR NZ,WAITKEY
+        LD (23560),A
+        LD A,(SYSFLG)
+        AND 4
+        RET Z
+        CALL REFFIR
+        LD A,(FIRE)
+        RLA 
+        JR C,WAITKEY
+        RET 
+
+REFFIR  PUSH HL
+		PUSH DE
+		PUSH BC
+        LD HL,(X_C)
+        LD DE,(X_M)
+        LD C,0xDF
+        CALL FIRM
+        POP BC
+		POP DE
+		POP HL
+        RET 
+getkey:
+READKEY LD A,(23560);процедура определения текущей клавиши
+        PUSH AF
+        XOR A
+        LD (23560),A
+        POP AF
+        CP 97
+        RET C
+        AND 223
+        RET 
+
+POINT   PUSH IX
+        CALL PRINTS
+		halt
+        CALL RESTS
+        POP IX
+        JP KEYS
+
+FIRA    CALL KEYS
+FIR     LD A,(FIRE)
+        AND 128
+        RLCA 
+        LD (FIRE),A
+        RRCA 
+        RET 
+
+PRINTS:
+        LD BC,(X_C)
+        LD A,B
+		;CALL 0x22B0
+		ld   b,a
+         and  a
+         rra
+         scf
+         rra
+         and  a
+         rra
+         xor  b
+		 and  0xF8
+         xor  b
+         ld   h,a
+         ld   a,c
+         rlca
+         rlca
+         rlca
+         xor  b
+         and  0xC7
+         xor  b
+         rlca
+         rlca
+         ld   l,a
+         ld   a,c
+         and  0x07
+		
+        LD (PRINTA+1),HL
+        LD (RESTS+1),HL
+        LD (PRINTS1+1),A
+        LD IX,BUFFER
+CCUR_   LD HL,KURS1
+        LD A,8
+ALRD    EX AF,AF' 
+        LD C,(HL)
+		LD B,-1
+        INC HL
+        LD E,(HL)
+		LD D,0
+        INC HL
+PRINTS1 LD A,0
+        AND A
+        JR Z,OUK1
+        LD D,A
+SCMSK   SCF 
+        RR C
+        RR B
+        DEC A
+        JR NZ,SCMSK
+        LD A,D
+        LD D,0
+SCSPR   AND A
+        RR E
+        RR D
+        DEC A
+        JR NZ,SCSPR
+OUK1
+        PUSH HL
+PRINTA  LD HL,0
+        LD A,(HL)
+        LD (IX+0),A
+        AND C
+        OR E
+        LD (HL),A
+        INC HL
+        LD A,(HL)
+        LD (IX+1),A
+        LD A,L
+        AND 31
+        JR Z,SKILIN
+        LD A,(HL)
+        AND B
+        OR D
+        LD (HL),A
+SKILIN  DEC HL
+        INC IX
+        INC IX
+        CALL D_HL
+        LD (PRINTA+1),HL
+        LD A,H
+        POP HL
+        CP 0x58
+        RET NC
+        EX AF,AF' 
+        DEC A
+        JR NZ,ALRD
+        RET 
+
+RESTS:  LD DE,0
+        LD HL,BUFFER
+        LD B,8
+RESTS1: LD A,(HL)
+        LD (DE),A
+        INC E
+        INC HL
+        LD A,E
+        AND 31
+        JR Z,NEXTL1
+        LD A,(HL)
+        LD (DE),A
+NEXTL1: DEC E
+        INC HL
+        CALL D_DE
+        LD A,D
+        CP 0x58
+        RET NC
+        DJNZ RESTS1
+        RET 
+
+KEYS
+        XOR A
+        LD (FIRE),A
+        CALL MOUSE
+        CALL KEYSCAN
+        LD HL,(ACSELL)
+        LD A,H
+        AND A
+        JR NZ,KEYS1
+        LD (ACSELL),A
+        RET 
+KEYS1   LD DE,(X_C)
+        RRA 
+        CALL C,RIGHT
+        RRA 
+        CALL C,LEFT
+        RRA 
+        CALL C,DOWN
+        RRA 
+        CALL C,UP
+        LD (X_C),DE
+        RRA 
+        JR C,SETFIR
+RESFIR
+        LD A,(SPEED)
+        CP L
+        RET C
+        INC L
+        LD (ACSELL),HL
+        RET 
+
+SETFIR  LD A,128
+        LD (FIRE),A
+        RLCA 
+        LD (ACSELL),A
+        RET 
+
+
+RIGHT   EX AF,AF' 
+        LD A,E
+        ADD A,L
+        CP E
+        JR NC,RIG1
+        LD A,-1
+RIG1    LD E,A
+        EX AF,AF' 
+        RET 
+
+LEFT    EX AF,AF' 
+        LD A,E
+        SUB L
+        CP E
+        JR Z,RIG1
+        JR C,RIG1
+        XOR A
+        JR RIG1
+
+UP      EX AF,AF' 
+        LD A,D
+        SUB L
+        BIT 7,A
+        JR Z,UP1
+        BIT 6,A
+        JR Z,UP1
+        XOR A
+UP1     LD D,A
+        EX AF,AF' 
+        RET 
+
+DOWN    EX AF,AF' 
+        LD A,D
+        ADD A,L
+        CP 191
+        JR C,UP1
+        LD A,191
+        JR UP1
+
+KEYSCAN
+        CALL KEYscan1
+        LD B,A
+        CALL KEMPSTON
+        OR B
+        LD (CONTROL),A
+        RET 
+
+KEYscan1
+        LD A,0x7F        ;FIRE
+        IN A,(0xFE)
+        RRA 
+        CCF 
+        RL C
+
+        LD A,0xFB        ;UP
+        IN A,(0xFE)
+        RRA 
+        CCF 
+        RL C
+
+        LD A,0xFD        ;DOWN
+        IN A,(0xFE)
+        RRA 
+        CCF 
+        RL C
+
+        LD A,0xDF        ;LEFT
+        IN A,(0xFE)
+        CPL 
+        RRCA 
+        RRCA 
+        RL C
+        RLCA 
+        RLCA            ;RIGHT
+        RL C
+
+        LD A,C
+        AND 31
+        RET 
+
+
+KEMPSTON
+        LD A,(SYSFLG)
+        AND 8
+        RET Z
+        IN A,(0x1F)
+        INC A
+        RET Z
+        DEC A
+        AND 0x1F
+        RET 
+
+MOUSE   LD A,(SYSFLG)
+        AND 4
+        RET Z
+
+        LD HL,(X_C)
+        LD DE,(X_M)
+        LD BC,0xFBDF
+
+        IN A,(C)
+        LD B,A
+        SUB E
+        CP 128
+        JR NC,TOLEFT
+        ADD A,L
+        JR C,ERX
+OI1     LD L,A
+		LD E,B
+        JR PO_Y
+ERX     LD A,255
+        JR OI1
+TOLEFT  NEG 
+        LD C,A
+		LD A,L
+		LD L,C
+        LD C,0xDF
+        SUB L
+        JR NC,OI1
+        XOR A
+        JR OI1
+
+PO_Y    LD B,0xFF
+        IN A,(C)
+        CPL 
+        LD B,A
+        SUB D
+        CP 128
+        JR NC,TOUP
+        ADD A,H
+        CP 192
+        JR NC,ERY
+OI2     LD H,A
+		LD D,B
+        JR FIRM
+ERY     LD A,191
+        JR OI2
+TOUP    NEG 
+        LD C,A
+		LD A,H
+		LD H,C
+        LD C,0xDF
+        SUB H
+        JR NC,OI2
+        XOR A
+        JR OI2
+
+FIRM    LD B,0xFA
+        IN A,(C)
+        OR 248
+        CPL 
+        LD B,A
+        AND A
+        JR Z,NO_KLICK
+        LD A,(KEYMSK)
+        AND A
+        JR NZ,NOT_FIRST
+        LD A,B
+        LD (KEYMSK),A
+NOT_FIRST
+        AND B
+        JR Z,NO_KLICK
+        LD A,128
+NO_KLICK
+        LD (FIRE),A
+
+COORDS  LD (X_C),HL
+        LD (X_M),DE
+        RET 
+
+KURS1   DEFB 0xBF,0x00,0x0F,0x40,0x83,0x30,0x81,0x3C,0xC3,0x18,0xC1,0x14
+        DEFB 0xE8,0x02,0xFD,0x00
+
+X_M     DEFW 0
+KEYMSK  DEFB 0
+BUFFER  DEFS 16
+
+;----- UTILS --------
+D_HL    INC H
+        LD A,H
+        AND 7
+        RET NZ
+        LD A,L
+        ADD A,32
+        LD L,A
+        RET C
+        LD A,H
+        SUB 8
+        LD H,A
+        RET 
+
+D_DE    INC D
+        LD A,D
+        AND 7
+        RET NZ
+        LD A,E
+        ADD A,32
+        LD E,A
+        RET C
+        LD A,D
+        SUB 8
+        LD D,A
+        RET 
+
+U_HL:   LD A,H
+        DEC H
+        AND 7
+        RET NZ
+        LD A,L
+        SUB 32
+        LD L,A
+        RET C
+        LD A,H
+        ADD A,8
+        LD H,A
+        RET 
+
+COOR_Z  LD A,L     ;расчет адреса по знакоместам
+        AND 7       ;L-Y  H-X
+        RRCA 
+        RRCA 
+        RRCA 
+        ADD A,H
+        LD H,L
+        LD L,A
+        LD A,H
+        AND 0x18
+        OR 64
+        LD H,A
+        RET 
+
+ATR_CONVERT
+        LD A,H
+        AND 0x18
+        RRCA 
+        RRCA 
+        RRCA 
+        ADD A,0x58
+        LD H,A
+        RET 
+
+COOR_ATR                ;расчет адреса атрибутов
+        LD A,H     ;L-Y  H-X
+        LD H,L
+        LD L,0
+        AND A
+        REPT 3
+        RR H
+        RR L
+        ENDR 
+        ADD A,L
+        LD L,A
+        LD A,H
+        OR 0x58
+        LD H,A
+        RET 
+
+MULS                    ;HL=H*E
+        LD L,0
+        LD D,L
+CWERT   REPT 8
+        ADD HL,HL
+        JR NC,$+3
+        ADD HL,DE
+        ENDR 
+        RET 
+
+MULT    LD HL,0    ;HL=DE*A
+        EX DE,HL
+        REPT 8
+        RRA 
+        JR NC,$+5
+        EX DE,HL
+        ADD HL,DE
+        EX DE,HL
+        ADD HL,HL
+        ENDR 
+        EX DE,HL
+        RET 
+
+DIV                     ;BC=BC/DE
+        LD HL,0
+        LD A,16
+        SLA C
+        RL B
+DIVL    ADC HL,HL
+        SBC HL,DE
+        JR NC,$+3
+        ADD HL,DE
+        RL C
+        RL B
+        DEC A
+        JR NZ,DIVL
+        LD A,B
+        CPL 
+        LD B,A
+        LD A,C
+        CPL 
+        LD C,A
+        RET 
+
+DIVI
+                        ;C=C/B A-REMAINDER
+        XOR A
+        RL C
+        REPT 8
+        ADC A,A
+        SUB B
+        JR NC,$+3
+        ADD A,B
+        CCF 
+        RL C
+        ENDR 
+        RET 
+
+TWA     LD A,47
+        AND A
+TW1     INC A
+        SBC HL,BC
+        JR NC,TW1
+        ADD HL,BC
+        LD (DE),A
+        INC DE
+        RET 
+
+STR                     ;перевод числа в десятиричный стринг
+                        ;C=0  A-число  DE- куда
+        DEC C           ;C=1  HL-число DE- куда
+        JR NZ,ONEB
+
+        LD BC,10000
+        CALL TWA
+
+        LD BC,1000
+        CALL TWA
+
+        LD BC,100
+        CALL TWA
+        LD A,L
+        EX DE,HL
+        JR ONB2-2
+
+ONEB    EX DE,HL
+        LD C,47
+ONB1    INC C
+        SUB 100
+        JR NC,ONB1
+        LD (HL),C
+        INC HL
+        ADD A,100
+        LD C,47
+ONB2    INC C
+        SUB 10
+        JR NC,ONB2
+        LD (HL),C
+        INC HL
+        ADD A,58
+        LD (HL),A
+        INC HL
+        EX DE,HL
+        RET 
+
+VAL     LD HL,0
+VALLOOP LD A,(DE)
+        SUB '0'
+        RET C
+        CP 10
+        RET NC
+        ADD HL,HL
+        LD B,H
+		LD C,L
+        ADD HL,HL
+        ADD HL,HL
+        ADD HL,BC
+        ADDHLA
+        INC DE
+        JR VALLOOP
+
+RECALC  LD HL,(X_C)
+        LD A,H
+        AND 248
+        RRA 
+        RRA 
+        RRA 
+        LD E,A
+        LD A,L
+        AND 248
+        RRA 
+        RRA 
+        RRA 
+        LD D,A
+        LD (Y_ZN),DE
+        RET 
+
+CAL_COR
+        PUSH HL
+        LD L,A
+		LD E,A
+        XOR A
+        LD H,A
+		LD D,H
+        ADD HL,HL
+        ADD HL,HL
+        ADD HL,DE
+        MOV E,D,WIN_ACT
+        ADD HL,DE
+        LD D,(HL)
+        INC HL
+        LD E,(HL)
+        POP HL
+        RET 
+
+CAL_ABS
+		LD A,(IX+WIN_YPOS)
+        ADD A,E
+        LD E,A
+
+		LD A,(IX+WIN_XPOS)
+        ADD A,D
+        LD D,A
+        RET 
+
+ADDRZ   LD A,(YWIN)
+        ADD A,E
+        AND 0x18
+        ADD A,64
+        LD H,A
+        LD A,(YWIN)
+        ADD A,E
+        AND 7
+        RRCA 
+        RRCA 
+        RRCA 
+        ADD A,D
+        LD L,A
+        LD A,(XWIN)
+        ADD A,L
+        LD L,A
+        RET 
+
+HITTEST
+        LD A,H
+        CP D
+        RET C
+        LD A,D
+        ADD A,B
+        DEC A
+        CP H
+        RET C
+        LD A,L
+        CP E
+        RET C
+        LD A,E
+        ADD A,C
+        DEC A
+        CP L
+        RET 
+
+;---- VARIABLES ---
+
+;SYSTEM AREAS
+YWIN    DEFB 0          ;координаты окна
+XWIN    DEFB 0
+YSIZ    DEFB 0          ;размеры окна
+XSIZ    DEFB 0
+YTXT    DEFB 0          ;относительные координаты печати
+XTXT    DEFB 0
+X_C     DEFB 0          ;координаты стрелки в пикселах
+Y_C     DEFB 0
+Y_ZN    DEFB 0          ;координаты стрелки в знакоместах
+X_ZN    DEFB 0
+FREE    DEFW .SFB.(FREESEG)    ;адрес свободной ячейки памяти
+WINS    DEFB 0          ;количество открытых окон
+FIRE    DEFB 0
+ACSELL  DEFB 0
+CONTROL DEFB 0
+STAK    DEFW 0
+
+        #ifndef PRODUCE
+SYSFLG  DEFB    12      ;0
+        #else            ;1
+SYSFLG  DEFB    8       ;2-MOUSE
+        #endif           ;3-JOYSTIC
+
+;-----------VARIABLES-------------------------------------------
+
+CORR_TAB
+        DEFB    124,255,93,91,255,255,255,255,125,123,92
+REESTR  DEFS    20
+        DEFB    126
+
+RUS_KBD DEFB    ' !"#$%&''()*+,-./0123456789:;<=>?Ю' ;33
+        DEFB    'АБЦДЕФГХИЙКЛМНОПЯРСТУЖВЬЫЗШЭЩЧъю'      ;32
+        DEFB    'абцдефгхийклмнопярстужвьызшэщчч'      ;32 E=97
+        DEFS 	0x9F
+
+RK_SPRT DEFB    240,144,144,96 ,144,144,240
+
+        #ifndef NOMEMDRV
+CURPAG  DEFB 0
+        #endif 
+STAKP   DEFW 0
+
+CURNAME DEFS 11
+		;#if low($)>0
+		;DEFS 255-low($)
+		;#endif
+        ;_PARA
+	;FONT    INCBIN  "FONT6X8
+ENDCOVER
+
+
+
+

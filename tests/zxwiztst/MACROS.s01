@@ -1,0 +1,267 @@
+;***************************************************************
+;*
+;* MACROS.H
+;*
+;* Макросы,определения.
+;*
+;* (C) Vitamin/CAIG/2001  2001-2006
+;*
+;* Revision 9.01.2006
+;*
+;***************************************************************
+
+#if 0
+Используемые обозначения:
+RP(A,B) == RPh=A,RPl=B
+XZ,YZ- координаты(размеры) в знакоместах
+XP,YP- координаты(размеры) в пикселах
+XS- позиция в символах (6 пикс)
+
+Ключи компиляции (просто объявить в самом начале программы ДО
+включения MACROS.H):
+PRODUCE                 -release-версия
+NOSLB                   -нет поддержки скроллбаров
+NOCOMBO                 -нет поддержки COMBOBOX
+NOASKER                 -нет поддержки ASKER
+IM2MOD                  -используются IM2
+NOFILER                 -нет файлера
+RDCAT                   -поддержка чтения каталога (если NOFILER
+NOLOADFIL               -нет процедуры чтения файлов
+NOSAVEFIL               -нет процедуры записи файлов
+HIMEMDRV                -поддержка драйверов памяти >128к
+NOMEMDRV                -нет поддержки верхней памяти
+
+Объявление констант:
+WINCOLOR                -цвет окон
+HDRCOLOR                -цвет заголовков окон
+ACTCOLOR                -цвет выделенной области
+ACTPCOLR                -цвет выделенной PUSHLIKE-области
+
+CPAGE1                  -страница для INCLUDE "EXTERN"
+
+===================
+Описание дескриптора окна:
+WIN_DESCRIPTOR:
+        DB WINX,WINY,WINWID,WINHEI      -координаты и размеры
+        DB STYLE                        -стиль
+        DB RESERVED                     -резерв
+        DW WINTEXT                      -текст
+        DW WINACT                       -активные зоны
+        DW WINHOT                       -горячие клавиши
+        DW WINSPR                       -спрайты
+        DW WINFLG                       -флажки
+        DW WINSWT                       -переключатели
+        [DW WINSLB]                     -скроллбары (!NOSLB)
+        DW WINPLZ                       -слайдеры
+        DW WINLST                       -список
+        DW WINCALL                      -вызов при создании
+        DW -1                           -конец дескриптора
+
+Поля описателей должны иметь фиксированное смещение. Если
+нет объектов определенного типа, поле описателя должно быть
+равно 0.
+#endif 
+
+WIN_XPOS=0
+WIN_YPOS=WIN_XPOS+1
+WIN_WDT=WIN_YPOS+1
+WIN_HGT=WIN_WDT+1
+WIN_OPT=WIN_HGT+1
+WIN_TXT=WIN_OPT+2
+WIN_ACT=WIN_TXT+2
+WIN_HOT=WIN_ACT+2
+WIN_SPR=WIN_HOT+2
+WIN_FLG=WIN_SPR+2
+WIN_SWT=WIN_FLG+2
+        #ifndef NOPOLZ
+WIN_SLB=WIN_SWT+2
+WIN_PLZ=WIN_SLB+2
+        #else 
+WIN_PLZ=WIN_SWT+2
+        #endif
+WIN_LST=WIN_PLZ+2
+WIN_CLL=WIN_LST+2
+
+;Стили окна
+WIN_HEADER=1            ;есть заголовок
+WIN_REFRESH=2           ;регистрировать окно и рисовать
+WIN_MOVABLE=4           ;перемещаемое
+WIN_NOMODAL=8           ;немодальное (выход-промазать)
+WIN_NOBACK=16           ;не запоминать задний фон
+
+#if 0
+*Объект-текст: ASCIIZ-формат с управляющими кодами. Левая
+        граница печати- на 1 символ правее левой границы окна.
+*Объект-активная зона: набор дескрипторов
+DESCACT DB X,Y,WID,HEI
+        DB FLAG
+        ...
+        DB -1
+#endif 
+;Стили активной зоны
+ACT_ENA=1               ;разрешена
+ACT_LGT=2               ;подсвечиваемая
+ACT_PSH=4               ;"нажимаемая"
+
+#if 0
+*Объект-горячая клавиша: набор дескрипторов
+DESCHOT DB KEY
+        DW OPERAND
+        ...
+        DB -1
+Если старший байт OPERAND==0,то активизация горячей клавиши
+аналогично активации зоны с номером .OPERAND, иначе- переход на
+адрес OPERAND
+
+*Объект-спрайт: набор дескрипторов
+DESCSPR DB X,Y,WID,HEI,FLAG
+        DW DATA
+        ...
+        DB -1
+Формат FLAG аналогичен параметру в C' для PUT_SPRT
+
+*Объект-флажки: набор дескрипторов
+DESCHOT DB NUMBER       -номер активной зоны
+        DB VAL          -0/255
+        DW OPERAND
+        ...
+        DB -1
+Если OPERAND!=0, то при активации флажка _вызов_ OPERAND
+
+*Объект-переключатели: набор дескрипторов
+DESCSWT DB NUMBER       -номер активой зоны первого свитча
+        DB COUNT        -число свитчей
+        DB EQUAL        -номер выделенного (начиная с 0)
+        DW OPERAND
+        ...
+        DB -1
+
+*Объект-скроллбар: набор дескрипторов
+DESCSLB DB NUMBER       -активная зона (размер по скроллбару)
+        DB HIGH         -YZ
+        DB COUNT        -элементов в "списке"
+        DW 0            -резерв
+        DB DELTA        -текущая позиция
+        DW OPERAND
+        ...
+        DB -1
+
+*Объект-слайдер: набор дескрипторов
+DESCPLZ DB NUMBER       -активная зона (размер по слайдеру)
+        DB FLAG         -0- вертикальный, 1-горизонтальный
+        DB EQUAL        -значение (0..31)
+        DW OPERAND
+        ...
+        DB -1
+
+*Объект-список: дескриптор
+DESCLST DB NUMBER       -активная зона (без подсветки)
+        DB HIGH         -YZ
+        DB COUNT        -элементов в списке
+        DW 0            -резерв
+        DB DELTA        -номер первого видимого
+        DW LISTDATA     -массив строк
+        DB LEN          -такой длины
+
+        DB -1
+
+При выборе элемента списка WINDOW возвращает A=254 и C=номер
+выбранного элемента.
+Дескрипторов списков может быть несколько, но нельзя определить
+из какого списка был выбран элемент
+#endif 
+
+
+;Макросы доступа к элементам структуры
+TEST    MACRO tbit,of
+        BIT tbit,(IX+of)
+        ENDM 
+
+
+;Можно в качестве первого параметра указывать список регистров
+;MOV EDCB,WIN_XPOS
+;       ==
+;LD E,(IX+WIN_XPOS):LD D,(IX+WIN_XPOS+1)
+;LD C,(IX+WIN_XPOS+2),LD B,(IX+WIN_XPOS+3)
+
+MOV     MACRO re1,re2,of
+        LD re1,(IX+of)
+		LD re2,(IX+of+1)
+        ENDM 
+
+;Обратно MOV
+        MACRO STOR
+        IF ?\0+1
+        DISPLAY "FIELD \0 IS UNDEFINED"
+        ELSE 
+        LOCAL 
+        COFF=\P
+        REPEAT 
+        LD (IX+COFF),\C\N
+        COFF=COFF+1
+        UNTIL "\C"-","
+        ENDL 
+        ENDIF 
+        ENDM 
+
+;Можно в качестве первого параметра указывать список регистров
+;MOVHL ABC
+;   ==
+;LD A,(HL):INC HL:LD B,(HL):INC HL:LD C,(HL):INC HL
+MOVHL   MACRO re
+        LD re,(HL)
+        INC HL
+        ENDM 
+
+;Обратно MOVHL
+STORHL  MACRO re
+        LD (HL),re
+        INC HL
+        ENDM 
+
+LDCP    MACRO   
+        LD A,(HL)
+        CP 255
+        ENDM 
+
+;HL+=A
+ADDHLA  MACRO 
+        ADD A,L
+        LD L,A
+        ADC A,H
+        SUB L
+        LD H,A
+        ENDM 
+
+;DE+=A
+ADDDEA  MACRO 
+        ADD A,E
+        LD E,A
+        ADC A,D
+        SUB E
+        LD D,A
+        ENDM 
+
+;A*=8
+AMUL8   MACRO   
+        ADD A,A
+        ADD A,A
+        ADD A,A
+        ENDM 
+
+;HL+=3
+HLPL3   MACRO 
+        INC HL
+        INC HL
+        INC HL
+        ENDM 
+
+;HL+=2
+HLPL2   MACRO 
+        INC HL
+        INC HL
+        ENDM 
+
+;Выравнивание куска кода по границе 256 байт
+
+
